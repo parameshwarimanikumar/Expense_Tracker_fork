@@ -98,11 +98,12 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'expense_db',
         'USER': 'postgres',
-        'PASSWORD': 'Sanjay@123',
-        'HOST': 'localhost', 
-        'PORT': '3000',         
+        'PASSWORD': 'paramesh',
+        'HOST': 'localhost',  # Make sure this is localhost
+        'PORT': '5432',  # Default PostgreSQL port
     }
 }
+
 
 
 # Password validation
