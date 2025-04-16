@@ -1,0 +1,59 @@
+    
+Common
+
+    Side Bar
+
+        Logo Color  - [#124451]
+        tab Active color - [#124451]
+        tab inactive color - text-gray-500
+
+        font-bold for active link
+        font-regular for inactive
+
+    Navbar
+
+        heading - text-2xl font-semibold
+
+--------------------------------------------------------------------
+
+Home
+
+    Card
+        textsize - text-xl md:text-lg font-bold
+    
+    ItemRow
+        header of table - font-semibold
+                          text-[14px]
+                          text-gray-500
+                          border -  border-gray-100 
+        button and total
+
+             <button className="bg-[#124451] text-white px-4 py-1 rounded-full cursor-pointer ml-2"> Submit </button>
+             <div className="text-lg font-bold text-[#124451] mr-4"> Total: ₹{totalAmount}</div>
+
+        table content
+
+             text-sm
+             for total - font-semibold
+        
+        AddItem heading
+             text-lg md:text-xl font-bold text-[#124451]
+    
+    Recently Added
+            header of table - font-semibold
+                            text-[14px]
+                            text-gray-500
+                            border -  border-gray-100 
+            
+            content - text-sm font-semibold
+
+--------------------------------------------------------------------
+
+Regular Expense
+
+
+
+
+
+
+                          

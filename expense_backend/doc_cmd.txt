@@ -1,0 +1,151 @@
+pip install django djangorestframework djangorestframework-simplejwt pillow python-dateutil django-allauth dj-rest-auth social-auth-app-django python-social-auth psycopg2-binary python-dotenv
+
+pip freeze > requirements.txt   // to get all packages installed in system
+
+pip install pipreqs
+
+
+
+
+Absolutely, YES! 🎯 You can fully integrate this notification system into your **React frontend** using your Django REST API. Here’s how:
+
+---
+
+## ✅ 1. **Expose Notification API from Django**
+
+In `urls.py`:
+
+```python
+from django.urls import path
+from .views import user_notifications
+
+urlpatterns = [
+    path('notifications/', user_notifications, name='user-notifications'),
+]
+```
+
+In `views.py`, ensure this view returns notifications:
+
+```python
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_notifications(request):
+    notifications = Notification.objects.filter(receiver=request.user).order_by('-created_at')
+    serializer = NotificationSerializer(notifications, many=True)
+    return Response(serializer.data)
+```
+
+---
+
+## ✅ 2. **React: Fetch Notifications**
+
+In your React frontend, use `axios` or `React Query` to fetch notifications:
+
+```js
+import axios from "axios";
+import { useEffect, useState } from "react";
+
+const NotificationList = () => {
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get("http://localhost:8000/api/notifications/", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      })
+      .then((res) => {
+        setNotifications(res.data);
+      })
+      .catch((err) => console.error(err));
+  }, []);
+
+  return (
+    <div className="p-4 bg-white rounded-lg shadow">
+      <h2 className="text-lg font-bold mb-2">Notifications</h2>
+      {notifications.length === 0 ? (
+        <p>No notifications.</p>
+      ) : (
+        <ul>
+          {notifications.map((n) => (
+            <li key={n.id} className="mb-2 border-b pb-2">
+              <p>{n.message}</p>
+              <small className="text-gray-500">{new Date(n.created_at).toLocaleString()}</small>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+export default NotificationList;
+```
+
+---
+
+## ✅ 3. **Show Notifications on Header (Optional)**
+
+Add a bell icon in your top navbar (e.g., with `react-icons`) and show a dropdown or badge:
+
+```jsx
+import { BellIcon } from 'lucide-react';
+
+<BellIcon className="w-5 h-5 text-gray-700" />
+{notifications.length > 0 && (
+  <span className="bg-red-500 text-white text-xs px-2 rounded-full absolute -top-1 -right-1">
+    {notifications.length}
+  </span>
+)}
+```
+
+---
+
+## ✅ 4. **Mark Notifications as Read (Optional)**
+
+In Django:
+```python
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_notifications_read(request):
+    Notification.objects.filter(receiver=request.user, is_read=False).update(is_read=True)
+    return Response({"detail": "All marked as read."})
+```
+
+In React:
+```js
+axios.post('/api/notifications/mark-read/', {}, { headers: { Authorization: `Bearer ...` } })
+```
+
+---
+
+## ✅ Summary
+
+- Django provides the API ✅  
+- React fetches and displays notifications ✅  
+- You can enhance with badges, dropdowns, or even real-time WebSocket support later 🔥  
+
+Let me know if you want the **real-time notification (WebSocket/Socket.IO or Django Channels)** version too!
+
+
+
+
+@api_view(['GET'])
+def order_items_grouped_by_date(request):
+    start_date = request.query_params.get('start_date')
+    end_date = request.query_params.get('end_date')
+    
+    # Base queryset
+    if request.user.role and request.user.role.role_name.lower() == 'admin':
+        order_items = OrderItem.objects.all()
+    else:
+        order_items = OrderItem.objects.filter(order__created_user=request.user)
+    
+    # Apply date filters if provided
+    if start_date:
+        order_items = order_items.filter(added_date__gte=start_date)
+    if end_date:
+        order_items = order_items.filter(added_date__lte=end_date)
+    
+    # Rest of the grouping logic...

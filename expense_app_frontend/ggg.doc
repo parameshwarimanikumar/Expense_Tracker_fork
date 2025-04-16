@@ -1,0 +1,8 @@
+// utils/auth.js
+export const getCurrentUser = () => {
+  const userStr = localStorage.getItem('user');
+  return userStr ? JSON.parse(userStr) : null;
+};
+
+import { getCurrentUser } from '../../utils/auth';
+const currentUser = getCurrentUser();
