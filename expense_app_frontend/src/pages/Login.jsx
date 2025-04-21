@@ -1,8 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-import { Eye, EyeOff, Mail, User } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { loginUser, setAuthToken } from '../api_service/api';
 
 function Login() {
@@ -12,31 +10,31 @@ function Login() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  
   useEffect(() => {
     const token = localStorage.getItem('access');
     if (token) {
       navigate('/');
     }
-  }, []);
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setError(null); // clear previous error
+
     try {
       const data = await loginUser(email, password);
+
+      // Save tokens and user
       localStorage.setItem('access', data.access);
       localStorage.setItem('refresh', data.refresh);
       setAuthToken(data.access);
-
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Assume user role is available in response (adjust based on backend)
-      const userRole = data?.user?.role.role_name || 'User';
+      const userRole = data?.user?.role?.role_name || 'User';
       if (userRole === 'User') {
         navigate('/');
       } else {
-        // handle other roles if needed
+        // If Admin or other roles, you can navigate differently if needed
       }
     } catch (err) {
       console.error(err);
@@ -46,11 +44,12 @@ function Login() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      {/* Same UI code as before */}
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-        {/* Form */}
+        <h2 className="text-2xl font-bold mb-6 text-center text-[#2B3B6C]">Login</h2>
+        {error && <div className="text-red-500 mb-4 text-center">{error}</div>}
+        
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email Input */}
+          {/* Email */}
           <div className="relative">
             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
               <Mail className="h-5 w-5 text-gray-400" />
@@ -65,10 +64,10 @@ function Login() {
             />
           </div>
 
-          {/* Password Input */}
+          {/* Password */}
           <div className="relative">
             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-              <User className="h-5 w-5 text-gray-400" />
+              <Lock className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type={showPassword ? 'text' : 'password'}
@@ -87,10 +86,10 @@ function Login() {
             </button>
           </div>
 
-          {/* Login Button */}
+          {/* Submit */}
           <button
             type="submit"
-            className="w-full bg-[#2B3B6C] text-white py-2 px-4 rounded-md hover:bg-[#1e2a4d]"
+            className="w-full bg-[#2B3B6C] text-white py-2 px-4 rounded-md hover:bg-[#1e2a4d] transition"
           >
             Login
           </button>

@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { faFilePdf, faCalendarAlt, faFilter } from '@fortawesome/free-solid-svg-icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { faFilePdf, faFilter } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { getGroupedOrders, getAvailableDates } from '../../api_service/api';
+import { getGroupedOrders, getAvailableDates } from "../../api_service/api";
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+
+
 
 const DataTable = () => {
   const [groupedItems, setGroupedItems] = useState({});
@@ -17,15 +19,15 @@ const DataTable = () => {
     start_date: null,
     end_date: null,
     specific_date: null,
-    month: null
+    month: null,
   });
 
   const PAGE_SIZE = 10;
 
-  const fetchData = async (page = 1) => {
+  // Use `useCallback` to memoize the fetchData function
+  const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      // Convert filters to API format
       const apiFilters = {};
       if (filters.start_date) apiFilters.start_date = filters.start_date.toISOString().split('T')[0];
       if (filters.end_date) apiFilters.end_date = filters.end_date.toISOString().split('T')[0];
@@ -33,12 +35,12 @@ const DataTable = () => {
       if (filters.month) apiFilters.month = filters.month;
 
       const data = await getGroupedOrders(page, PAGE_SIZE, apiFilters);
-      
+
       setGroupedItems(data.results);
       setTotalPrice(data.total_price);
       setTotalPages(data.total_pages);
       setCurrentPage(page);
-      
+
       // Fetch available dates if not already loaded
       if (availableDates.length === 0) {
         const dates = await getAvailableDates();
@@ -49,16 +51,16 @@ const DataTable = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, availableDates.length]);
 
   useEffect(() => {
     fetchData();
-  }, [filters]);
+  }, [fetchData]); 
 
   const handleFilterSubmit = (newFilters) => {
     setFilters(newFilters);
     setShowFilter(false);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   };
 
   const handlePageChange = (page) => {
@@ -74,33 +76,32 @@ const DataTable = () => {
 
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg min-h-screen relative">
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <h2 className="text-lg md:text-xl font-bold text-[#124451]">
           {loading ? 'Loading...' : `Total Price: ₹ ${totalPrice.toFixed(2)}`}
         </h2>
         <div className="flex gap-2 w-full md:w-auto">
-          <button className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full cursor-pointer flex items-center gap-1">
-            <FontAwesomeIcon icon={faFilePdf} className="text-red-500" /> 
+          <button className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full flex items-center gap-1">
+            <FontAwesomeIcon icon={faFilePdf} className="text-red-500" />
             <span className="hidden sm:inline">Download PDF</span>
           </button>
-          <button 
-            className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full cursor-pointer ml-2 flex items-center gap-1"
+          <button
+            className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full flex items-center gap-1"
             onClick={() => setShowFilter(true)}
           >
-            <FontAwesomeIcon icon={faFilter} /> <span className="hidden sm:inline">Filter</span>
+            <FontAwesomeIcon icon={faFilter} />
+            <span className="hidden sm:inline">Filter</span>
           </button>
         </div>
       </div>
 
-      {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#124451]"></div>
         </div>
       )}
 
-      {/* Desktop Table */}
+      {/* Table View */}
       {!loading && Object.keys(groupedItems).length > 0 && (
         <>
           <div className="hidden md:block">
@@ -135,8 +136,6 @@ const DataTable = () => {
               );
             })}
           </div>
-
-          {/* Mobile/Tablet Cards */}
           <div className="md:hidden space-y-4">
             {Object.keys(groupedItems).map((date, idx) => {
               const items = groupedItems[date];
@@ -145,28 +144,22 @@ const DataTable = () => {
               return (
                 <div key={date} className={`${idx % 2 === 0 ? "bg-gray-100" : "bg-white"} p-4 rounded-lg shadow-sm`}>
                   <div className="font-semibold text-[#124451] mb-3">{formatDate(date)}</div>
-                  
                   {items.map((item, index) => (
                     <div key={index} className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-gray-800 py-2 border-b last:border-b-0">
                       <div className="font-medium">{item.item_name}</div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Count:</span>
-                        <span>{item.count}</span>
+                        <span className="text-gray-500">Count:</span> <span>{item.count}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Price:</span>
-                        <span>₹{item.price.toFixed(2)}</span>
+                        <span className="text-gray-500">Price:</span> <span>₹{item.price.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Total:</span>
-                        <span>₹{(item.count * item.price).toFixed(2)}</span>
+                      <div className="flex justify-between col-span-2">
+                        <span className="text-gray-500">Total:</span> <span>₹{(item.count * item.price).toFixed(2)}</span>
                       </div>
                     </div>
                   ))}
-
                   <div className="mt-3 pt-2 border-t font-semibold flex justify-between">
-                    <span>Total:</span>
-                    <span>₹{totalPerRow.toFixed(2)}</span>
+                    <span>Total:</span> <span>₹{totalPerRow.toFixed(2)}</span>
                   </div>
                 </div>
               );
@@ -175,7 +168,7 @@ const DataTable = () => {
         </>
       )}
 
-      {/* No Results */}
+      {/* No Data Found */}
       {!loading && Object.keys(groupedItems).length === 0 && (
         <div className="text-center py-10 text-gray-500">
           No orders found matching your filters
@@ -187,10 +180,7 @@ const DataTable = () => {
         <div className="flex justify-between mt-4">
           <div>
             {currentPage > 1 && (
-              <button 
-                className="px-3 py-1 border rounded text-gray-700"
-                onClick={() => handlePageChange(currentPage - 1)}
-              >
+              <button className="px-3 py-1 border rounded text-gray-700" onClick={() => handlePageChange(currentPage - 1)}>
                 Previous
               </button>
             )}
@@ -198,36 +188,27 @@ const DataTable = () => {
           <div className="flex items-center gap-2 text-sm">
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
+              if (totalPages <= 5) pageNum = i + 1;
+              else if (currentPage <= 3) pageNum = i + 1;
+              else if (currentPage >= totalPages - 2) pageNum = totalPages - (4 - i);
+              else pageNum = currentPage - 2 + i;
+
+              if (pageNum <= totalPages) {
+                return (
+                  <button
+                    key={pageNum}
+                    className={`px-2 py-1 border ${currentPage === pageNum ? 'bg-[#124451] text-white' : 'text-gray-700'}`}
+                    onClick={() => handlePageChange(pageNum)}
+                  >
+                    {pageNum}
+                  </button>
+                );
               }
-              
-              return (
-                <button
-                  key={pageNum}
-                  className={`px-3 py-1 rounded ${currentPage === pageNum ? 'bg-[#124451] text-white' : 'border'}`}
-                  onClick={() => handlePageChange(pageNum)}
-                >
-                  {pageNum}
-                </button>
-              );
             })}
-            {totalPages > 5 && currentPage < totalPages - 2 && (
-              <span>...</span>
-            )}
           </div>
           <div>
             {currentPage < totalPages && (
-              <button 
-                className="px-3 py-1 border rounded text-gray-700"
-                onClick={() => handlePageChange(currentPage + 1)}
-              >
+              <button className="px-3 py-1 border rounded text-gray-700" onClick={() => handlePageChange(currentPage + 1)}>
                 Next
               </button>
             )}
@@ -235,162 +216,34 @@ const DataTable = () => {
         </div>
       )}
 
-      {/* Filter Modal */}
+      {/* Filter Popup */}
       {showFilter && (
-        <FilterModal
-          availableDates={availableDates}
-          currentFilters={filters}
-          onClose={() => setShowFilter(false)}
-          onSubmit={handleFilterSubmit}
-        />
-      )}
-    </div>
-  );
-};
-
-const FilterModal = ({ availableDates, currentFilters, onClose, onSubmit }) => {
-  const [filters, setFilters] = useState(currentFilters);
-  const [filterType, setFilterType] = useState('date_range');
-
-  const handleDateChange = (date, field) => {
-    setFilters(prev => ({ ...prev, [field]: date }));
-  };
-
-  const handleMonthChange = (e) => {
-    setFilters(prev => ({ ...prev, month: e.target.value }));
-  };
-
-  const handleSpecificDateChange = (e) => {
-    const dateStr = e.target.value;
-    setFilters(prev => ({ 
-      ...prev, 
-      specific_date: dateStr ? new Date(dateStr) : null 
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(filters);
-  };
-
-  const handleReset = () => {
-    setFilters({
-      start_date: null,
-      end_date: null,
-      specific_date: null,
-      month: null
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-start pt-10 md:pt-20 z-50">
-      <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4 relative">
-        <h2 className="text-lg md:text-xl font-bold text-[#124451] mb-4">Filter Orders</h2>
-        
-        <div className="mb-4">
-          <div className="flex gap-2 mb-3">
-            <button
-              className={`px-3 py-1 rounded-full text-sm ${filterType === 'date_range' ? 'bg-[#124451] text-white' : 'border'}`}
-              onClick={() => setFilterType('date_range')}
-            >
-              Date Range
-            </button>
-            <button
-              className={`px-3 py-1 rounded-full text-sm ${filterType === 'specific_date' ? 'bg-[#124451] text-white' : 'border'}`}
-              onClick={() => setFilterType('specific_date')}
-            >
-              Specific Date
-            </button>
-            <button
-              className={`px-3 py-1 rounded-full text-sm ${filterType === 'month' ? 'bg-[#124451] text-white' : 'border'}`}
-              onClick={() => setFilterType('month')}
-            >
-              Month
-            </button>
-          </div>
-
-          {filterType === 'date_range' && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <DatePicker
-                  selected={filters.start_date}
-                  onChange={(date) => handleDateChange(date, 'start_date')}
-                  selectsStart
-                  startDate={filters.start_date}
-                  endDate={filters.end_date}
-                  className="w-full p-2 border rounded"
-                  placeholderText="Select start date"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <DatePicker
-                  selected={filters.end_date}
-                  onChange={(date) => handleDateChange(date, 'end_date')}
-                  selectsEnd
-                  startDate={filters.start_date}
-                  endDate={filters.end_date}
-                  minDate={filters.start_date}
-                  className="w-full p-2 border rounded"
-                  placeholderText="Select end date"
-                />
-              </div>
-            </div>
-          )}
-
-          {filterType === 'specific_date' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Date</label>
-              <select
-                className="w-full p-2 border rounded"
-                value={filters.specific_date?.toISOString().split('T')[0] || ''}
-                onChange={handleSpecificDateChange}
-              >
-                <option value="">All Dates</option>
-                {availableDates.map(date => (
-                  <option key={date} value={date}>
-                    {new Date(date).toLocaleDateString('en-GB')}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {filterType === 'month' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Month</label>
-              <input
-                type="month"
-                className="w-full p-2 border rounded"
-                value={filters.month || ''}
-                onChange={handleMonthChange}
+        <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
+            <h3 className="text-lg font-semibold text-[#124451] mb-4">Apply Filters</h3>
+            <div className="mb-4">
+              <DatePicker
+                selected={filters.start_date}
+                onChange={(date) => setFilters((prev) => ({ ...prev, start_date: date }))}
+                placeholderText="Start Date"
+                className="w-full p-2 border rounded-md"
+              />
+              <DatePicker
+                selected={filters.end_date}
+                onChange={(date) => setFilters((prev) => ({ ...prev, end_date: date }))}
+                placeholderText="End Date"
+                className="w-full p-2 border rounded-md mt-2"
               />
             </div>
-          )}
+            <button
+              className="w-full bg-[#124451] text-white py-2 rounded-lg"
+              onClick={() => handleFilterSubmit(filters)}
+            >
+              Apply Filters
+            </button>
+          </div>
         </div>
-
-        <div className="flex justify-end mt-6 gap-2">
-          <button 
-            className="px-4 py-1 border rounded-full cursor-pointer"
-            onClick={handleReset}
-          >
-            Reset
-          </button>
-          <button 
-            className="px-4 py-1 border rounded-full cursor-pointer"
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button 
-            className="bg-[#124451] text-white px-4 py-1 rounded-full cursor-pointer"
-            onClick={handleSubmit}
-          >
-            Apply Filters
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

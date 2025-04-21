@@ -51,8 +51,15 @@ def user_login(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def user_logout(request):
-    logout(request)
-    return Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
+    try:
+        refresh_token = request.data["refresh_token"]
+        token = RefreshToken(refresh_token)
+        token.blacklist()  # blacklist the refresh token
+        logout(request)
+        return Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 # class MyTokenObtainPairView(TokenObtainPairView):
 #      serializer_class = MyTokenObtainPairSerializer

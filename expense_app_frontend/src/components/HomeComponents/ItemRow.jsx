@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
-import { FaTrash, FaTimes } from "react-icons/fa";
+import { FaTrash } from "react-icons/fa";
 import "react-datepicker/dist/react-datepicker.css";
 
-const ItemRow = ({ item, index, updateItem, deleteItem, allItems, editMode, addedDate}) => {
-  
+const ItemRow = ({ item, index, updateItem, deleteItem, allItems, editMode }) => {
   const [price, setPrice] = useState(item.price || 0);
   const [total, setTotal] = useState(item.total || 0);
 
-  
   useEffect(() => {
     // Find the matching item from allItems
     const matched = allItems.find((i) => i.id === item.item_id || i.item_name === item.item_name);
@@ -25,7 +23,7 @@ const ItemRow = ({ item, index, updateItem, deleteItem, allItems, editMode, adde
         item_id: matched.id
       });
     }
-  }, [item.item_name, item.count, allItems]);
+  }, [item.item_name, item.count, allItems, index, item, updateItem]);
 
   // item price fetching based on selection
   const handleChange = (field, value) => {
@@ -46,17 +44,14 @@ const ItemRow = ({ item, index, updateItem, deleteItem, allItems, editMode, adde
   };
 
   return (
-    <>
-    
     <tr className="text-sm">
       <td className="p-2">
-      <select
+        <select
           className="border border-gray-200 px-2 py-1 rounded-full w-30"
           value={item.item_name}
           onChange={(e) => handleChange("item_name", e.target.value)}
           disabled={editMode && item.id}  // ✅ disable only for existing items
         >
-
           <option value="">Select</option>
           {allItems.map((itm) => (
             <option key={itm.id} value={itm.item_name}>
@@ -89,8 +84,7 @@ const ItemRow = ({ item, index, updateItem, deleteItem, allItems, editMode, adde
         </button>
       </td>
     </tr>
-    </>
   );
 };
 
-export default ItemRow
+export default ItemRow;
