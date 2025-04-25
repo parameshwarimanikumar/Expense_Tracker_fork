@@ -9,121 +9,18 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
-import dayjs from "dayjs"; // <-- Install via npm i dayjs
-
-const initialExpenses = [
-  {
-    id: 1,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: false,
-    isRefunded: false,
-  },
-
-  {
-    id: 2,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: false,
-    isRefunded: false,
-  },
-
-  {
-    id: 3,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: false,
-    isRefunded: false,
-  },
-
-  {
-    id: 4,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: false,
-    isRefunded: false,
-  },
-
-  {
-    id: 5,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: true,
-    isRefunded: true,
-  },
-
-  {
-    id: 6,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: true,
-    isRefunded: true,
-  },
-
-  {
-    id: 7,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: true,
-    isRefunded: true,
-  },
-
-  {
-    id: 8,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: true,
-    isRefunded: true,
-  },
-
-  {
-    id: 9,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: true,
-    isRefunded: true,
-  },
-
-  {
-    id: 10,
-    date: "12/10/2025",
-    description: "Battery, Paper, Pen",
-    type: "Product",
-    bill: 100,
-    amount: 100,
-    isVerified: true,
-    isRefunded: true,
-  },
-];
+import dayjs from "dayjs";
+import axios from "axios";
 
 const ExpenseTable = () => {
+  const [expenses, setExpenses] = useState([]);
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
+  const [filters, setFilters] = useState({
+    type: "",
+    isVerified: "",
+    startDate: "",
+    endDate: "",
+  });
   const [showFilter, setShowFilter] = useState(false);
   const [showExpense, setShowExpense] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -136,37 +33,36 @@ const ExpenseTable = () => {
     isVerified: false,
     isRefunded: false,
   });
-  const [expenses, setExpenses] = useState(initialExpenses);
-
-  const [filters, setFilters] = useState({
-    type: "",
-    isVerified: "",
-    startDate: "",
-    endDate: "",
-  });
-
-  const [filteredExpenses, setFilteredExpenses] = useState(initialExpenses);
-
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
+  useEffect(() => {
+    axios
+      .get("http://localhost:8000/api/expenses/")
+      .then((response) => {
+        setExpenses(response.data);
+        setFilteredExpenses(response.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching expenses:", error);
+      });
+  }, []);
+
   // APPLY FILTERS
+
   useEffect(() => {
     let temp = [...expenses];
-
-    // Filter by type
+// Filter by type
     if (filters.type) {
       temp = temp.filter((exp) => exp.type === filters.type);
     }
-
-    // Filter by verification status
+// Filter by verification status
     if (filters.isVerified !== "") {
       temp = temp.filter(
         (exp) => exp.isVerified === (filters.isVerified === "true")
       );
     }
-
-    // Filter by date range
+// Filter by date range
     if (filters.startDate && filters.endDate) {
       temp = temp.filter((exp) => {
         const expDate = dayjs(exp.date);
@@ -178,7 +74,7 @@ const ExpenseTable = () => {
     }
 
     setFilteredExpenses(temp);
-    setCurrentPage(1); // Reset to page 1 after filtering
+    setCurrentPage(1);
   }, [expenses, filters]);
 
   const handleFilterChange = (e) => {
@@ -211,7 +107,7 @@ const ExpenseTable = () => {
   };
 
   const handleExpenseSubmit = (e) => {
-    e.preventDefault(); // 👈 Important: prevent page reload
+    e.preventDefault();
 
     if (editingExpense) {
       const updatedExpenses = expenses.map((expense) =>
@@ -240,7 +136,6 @@ const ExpenseTable = () => {
 
   const handlePagination = (pageNumber) => setCurrentPage(pageNumber);
 
-  // Group data by month if more than 15 entries
   const currentMonth = dayjs().format("YYYY-MM");
   const filteredByMonth = filteredExpenses.filter(
     (exp) => dayjs(exp.date).format("YYYY-MM") === currentMonth
@@ -256,7 +151,9 @@ const ExpenseTable = () => {
   );
 
   const calculateTotalAmount = () => {
-    return finalExpenses.reduce((acc, exp) => acc + exp.amount, 0);
+    return finalExpenses
+      .reduce((total, exp) => total + parseFloat(exp.amount || 0), 0)
+      .toFixed(2);
   };
 
   const handleBillUpload = (e) => {
@@ -266,7 +163,7 @@ const ExpenseTable = () => {
     }
   };
 
-  return (
+ return (
     <div className="p-6 bg-white rounded-lg">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
@@ -289,192 +186,85 @@ const ExpenseTable = () => {
         </div>
       </div>
 
-      {/* Filters Section */}
+      {/* Filter Modal */}
       {showFilter && (
-         <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-start pt-10 md:pt-20 z-50">
-         <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4 relative">
-
-          <div>
-            <label className="block text-gray-700 mb-1">Type</label>
-            <select
-              name="type"
-              value={filters.type}
-              onChange={handleFilterChange}
-              className="w-full border p-2 rounded"
-            >
-              <option value="">All</option>
-              <option value="Product">Product</option>
-              <option value="Food">Food</option>
-              <option value="Travel">Travel</option>
-            </select>
-          </div>
-
-          <div>
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg w-96 space-y-3">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Filter</h2>
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1">Type</label>
+              <select
+                name="type"
+                value={filters.type}
+                onChange={handleFilterChange}
+                className="w-full border p-2 rounded"
+              >
+                <option value="">All</option>
+                <option value="Product">Product</option>
+                <option value="Food">Food</option>
+                <option value="Travel">Travel</option>
+              </select>
+            </div>
+            <div>
             <label className="block text-gray-700 mb-1">Verified Status</label>
             <select
-              name="isVerified"
-              value={filters.isVerified}
-              onChange={handleFilterChange}
-              className="w-full border p-2 rounded"
-            >
-              <option value="">All</option>
-              <option value="true">Verified</option>
-              <option value="false">Not Verified</option>
-            </select>
-          </div>
-
-          <div>
+                name="isVerified"
+                value={filters.isVerified}
+                onChange={handleFilterChange}
+                className="w-full border p-2 rounded"
+              >
+                <option value="">All</option>
+                <option value="true">Verified</option>
+                <option value="false">Not Verified</option>
+              </select>
+            </div>
+            <div>
             <label className="block text-gray-700 mb-1">Start Date</label>
             <input
-              type="date"
-              name="startDate"
-              value={filters.startDate}
-              onChange={handleFilterChange}
-              className="w-full border p-2 rounded"
-            />
-          </div>
-
-          <div>
+                type="date"
+                name="startDate"
+                value={filters.startDate}
+                onChange={handleFilterChange}
+                className="w-full border p-2 rounded"
+              />
+            </div>
+            <div>
             <label className="block text-gray-700 mb-1">End Date</label>
-            <input
-              type="date"
-              name="endDate"
-              value={filters.endDate}
-              onChange={handleFilterChange}
-              className="w-full border p-2 rounded"
-            />
+              <input
+                type="date"
+                name="endDate"
+                value={filters.endDate}
+                onChange={handleFilterChange}
+                className="w-full border p-2 rounded"
+              />
+            </div>
+            <div className="col-span-full flex justify-end gap-2 mt-2">
+              <button
+                className="px-4 py-2 bg-gray-300 rounded"
+                onClick={() => {
+                  resetFilters();
+                  setShowFilter(false);
+                }}
+                
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-[#124451] text-white rounded"
+                onClick={() => setShowFilter(false)}
+              >
+                Apply
+              </button>
+            </div>
           </div>
-
-          <div className="col-span-full flex justify-end gap-2 mt-2">
-            <button
-              className="px-4 py-2 bg-gray-300 rounded"
-              onClick={() => {
-                resetFilters();
-                setShowFilter(false); // close filter section on cancel
-              }}
-            >
-              Cancel
-            </button>
-
-            <button
-              className="px-4 py-2 bg-[#124451] text-white rounded"
-              onClick={() => setShowFilter(false)} // just close filter section on apply
-            >
-              Apply
-            </button>
-          </div>
-        </div>
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="border-b border-gray-100 text-gray-500 text-[14px] font-medium">
-            <tr>
-              <th className="p-3 text-left">S.No</th>
-              <th className="p-3 text-left">Date</th>
-              <th className="p-3 text-left">Description</th>
-              <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">Bill</th>
-              <th className="p-3 text-left">Amount</th>
-              <th className="p-3 text-left">Is Verified</th>
-              <th className="p-3 text-left">Is Refunded</th>
-              <th className="p-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-800 text-sm">
-            {currentExpenses.map((expense, index) => (
-              <tr
-                key={expense.id}
-                className={`${index % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
-              >
-                <td className="p-3">{indexOfFirstExpense + index + 1}</td>
-                <td className="p-3">
-                  {dayjs(expense.date).format("DD/MM/YYYY")}
-                </td>
-                <td className="p-3">{expense.description}</td>
-                <td className="p-3">{expense.type}</td>
-                <td className="p-3">
-                  {expense.bill ? (
-                    typeof expense.bill === "string" ? (
-                      <a
-                        href={expense.bill}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        View
-                      </a>
-                    ) : (
-                      <span className="text-gray-500">Uploaded</span>
-                    )
-                  ) : (
-                    "N/A"
-                  )}
-                </td>
-                <td className="p-3">₹ {expense.amount}</td>
-                <td className="p-3">
-                  {expense.isVerified ? (
-                    <div className="flex items-center gap-1 text-green-600">
-                      <FaCheckCircle /> Verified
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-red-600">
-                      <FaTimesCircle /> Not Verified
-                    </div>
-                  )}
-                </td>
-                <td className="p-3">
-                  {expense.isRefunded ? (
-                    <div className="flex items-center gap-1 text-green-600">
-                      <FaRedo /> Refunded
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-gray-500">
-                      <FaRedo /> Pending
-                    </div>
-                  )}
-                </td>
-                <td className="p-3">
-                  <button
-                    className="text-green-600"
-                    onClick={() => handleEditExpense(expense)}
-                  >
-                    <FaEdit />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex justify-end mt-4">
-        <div className="flex items-center gap-2 text-sm">
-          <button
-            className="px-2 py-1 border rounded text-gray-400"
-            onClick={() => handlePagination(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            <FaChevronLeft />
-          </button>
-          <button className="px-3 py-1 bg-[#124451] text-white rounded">
-            {currentPage}
-          </button>
-          <button
-            className="px-2 py-1 border rounded text-gray-400"
-            onClick={() => handlePagination(currentPage + 1)}
-            disabled={currentPage * itemsPerPage >= finalExpenses.length}
-          >
-            <FaChevronRight />
-          </button>
-        </div>
-      </div>
-
       {/* Add Expense Modal */}
-      {showExpense && (
+       {showExpense && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-start pt-10 md:pt-20 z-50">
           <div className="bg-white p-6 rounded-lg w-[400px]">
             <h3 className="text-xl font-semibold mb-4">
@@ -532,6 +322,7 @@ const ExpenseTable = () => {
                   <option value="Product">Product</option>
                   <option value="Food">Food</option>
                   <option value="Travel">Travel</option>
+                  <option value="Travel">office</option>
                 </select>
               </div>
               <div className="mb-4">
@@ -563,7 +354,114 @@ const ExpenseTable = () => {
           </div>
         </div>
       )}
-    </div>
+    
+      {/* Table */}
+      <div className="overflow-x-auto mt-4">
+        <table className="w-full">
+        <thead className="border-b border-gray-100 text-gray-500 text-[14px] font-medium">
+        <tr>
+              <th className="p-3 text-left">S.No</th>
+              <th className="p-3 text-left">Date</th>
+              <th className="p-3 text-left">Description</th>
+              <th className="p-3 text-left">Type</th>
+              <th className="p-3 text-left">Bill</th>
+              <th className="p-3 text-left">Amount</th>
+              <th className="p-3 text-left">Is Verified</th>
+              <th className="p-3 text-left">Is Refunded</th>
+              <th className="p-3 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="text-gray-800 text-sm">
+            {currentExpenses.map((exp, i) => (
+              <tr
+              key={exp.id}
+              className={`${i % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
+            >
+                <td className="p-3">{i + i + 1}</td>
+                <td className="p-3">
+                  {dayjs(exp.date).format("DD/MM/YYYY")}
+                </td>
+                <td className="p-3">{exp.description}</td>
+                <td className="p-3">{exp.type}</td>
+                <td className="p-3">
+                  {exp.bill ? (
+                    typeof exp.bill === "string" ? (
+                      <a
+                        href={exp.bill}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <span className="text-gray-500">Uploaded</span>
+                    )
+                  ) : (
+                    "N/A"
+                  )}
+                </td>
+                <td className="p-3">₹ {exp.amount}</td>
+                <td className="p-3">
+                  {exp.isVerified ? (
+                    <div className="flex items-center gap-1 text-green-600">
+                      <FaCheckCircle /> Verified
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-red-600">
+                      <FaTimesCircle /> Not Verified
+                    </div>
+                  )}
+                </td>
+                <td className="p-3">
+                  {exp.isRefunded ? (
+                    <div className="flex items-center gap-1 text-green-600">
+                      <FaRedo /> Refunded
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <FaRedo /> Pending
+                    </div>
+                  )}
+                </td>
+                <td className="p-3">
+                  <button
+                    className="text-green-600"
+                    onClick={() => handleEditExpense(exp)}
+                  >
+                    <FaEdit />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+
+      {/* Pagination */}
+      <div className="flex justify-end mt-4">
+        <div className="flex items-center gap-2 text-sm">
+          <button
+            className="px-2 py-1 border rounded text-gray-400"
+            onClick={() => handlePagination(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <FaChevronLeft />
+          </button>
+          <button className="px-3 py-1 bg-[#124451] text-white rounded">
+            {currentPage}
+          </button>
+          <button
+            className="px-2 py-1 border rounded text-gray-400"
+            onClick={() => handlePagination(currentPage + 1)}
+            disabled={currentPage * itemsPerPage >= finalExpenses.length}
+          >
+            <FaChevronRight />
+          </button>
+        </div>
+      </div>
+      </div>
   );
 };
 

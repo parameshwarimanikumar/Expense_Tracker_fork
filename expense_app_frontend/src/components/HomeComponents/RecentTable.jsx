@@ -17,7 +17,7 @@ const RecentTable = () => {
     setLoading(true);
     try {
       const data = await fetchExpenses();
-      setRecentData(data.slice(0, 10)); // Optional: Show latest 10 entries
+      setRecentData(data.slice(0, 10)); // Show latest 10 entries
     } catch (error) {
       console.error('Error fetching recent data:', error);
     } finally {
@@ -31,6 +31,12 @@ const RecentTable = () => {
 
   const handleEdit = async (item) => {
     const today = dayjs().format('YYYY-MM-DD');
+
+    if (item.is_refunded) {
+      alert("Refunded orders cannot be edited.");
+      return;
+    }
+
     if (item.date !== today || item.user !== currentUser?.username) {
       alert("Only today's orders created by you can be edited.");
       return;
@@ -110,6 +116,12 @@ const RecentTable = () => {
               ) : (
                 recentData.map((data) => {
                   const isToday = data.date === today;
+                  const isRefunded = data.is_refunded;
+                  const isCurrentUser = data.user === currentUser?.username;
+
+                  const canEdit = isToday && isCurrentUser && !isRefunded;
+                  const canDelete = isToday;
+
                   return (
                     <tr key={data.order_id} className="text-sm font-semibold border-b border-gray-100">
                       <td className="p-2 md:p-3">{dayjs(data.date).format('MMM D, YYYY')}</td>
@@ -119,23 +131,38 @@ const RecentTable = () => {
                       <td className="p-2 md:p-3 flex justify-center gap-4">
                         <button
                           onClick={() => handleEdit(data)}
-                          disabled={!isToday}
-                          data-tooltip-id="edit-tooltip"
-                          data-tooltip-content={!isToday ? "Only today's entries can be edited" : ""}
-                          className={`${!isToday ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          disabled={!canEdit}
+                          data-tooltip-id={`edit-tooltip-${data.order_id}`}
+                          data-tooltip-content={
+                            canEdit
+                              ? ""
+                              : isRefunded
+                              ? "Refunded entries cannot be edited"
+                              : !isToday
+                              ? "Only today's entries can be edited"
+                              : !isCurrentUser
+                              ? "You can only edit your own entries"
+                              : ""
+                          }
+                          className={`${!canEdit ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                         >
-                          <FaEdit size={14} color={isToday ? "#16A63D" : "gray"} />
+                          <FaEdit size={14} color={canEdit ? "#16A63D" : "gray"} />
                         </button>
 
                         <button
                           onClick={() => handleDelete(data)}
-                          disabled={!isToday}
-                          data-tooltip-id="delete-tooltip"
-                          data-tooltip-content={!isToday ? "Only today's entries can be deleted" : ""}
-                          className={`${!isToday ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          disabled={!canDelete}
+                          data-tooltip-id={`delete-tooltip-${data.order_id}`}
+                          data-tooltip-content={
+                            canDelete ? "" : "Only today's entries can be deleted"
+                          }
+                          className={`${!canDelete ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                         >
-                          <FaTrash size={14} color={isToday ? "red" : "gray"} />
+                          <FaTrash size={14} color={canDelete ? "red" : "gray"} />
                         </button>
+
+                        <Tooltip id={`edit-tooltip-${data.order_id}`} />
+                        <Tooltip id={`delete-tooltip-${data.order_id}`} />
                       </td>
                     </tr>
                   );
@@ -143,8 +170,6 @@ const RecentTable = () => {
               )}
             </tbody>
           </table>
-          <Tooltip id="edit-tooltip" />
-          <Tooltip id="delete-tooltip" />
         </div>
       </div>
 
