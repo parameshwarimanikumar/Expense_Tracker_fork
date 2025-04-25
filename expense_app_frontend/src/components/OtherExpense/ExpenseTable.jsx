@@ -37,16 +37,32 @@ const ExpenseTable = () => {
   const itemsPerPage = 15;
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8000/api/expenses/")
-      .then((response) => {
+    const fetchExpenses = async () => {
+      try {
+        const token = localStorage.getItem("access"); // ✅ CORRECT
+
+  
+        if (!token) {
+          console.error("No access token found in localStorage.");
+          return;
+        }
+  
+        const response = await axios.get("http://localhost:8000/api/expenses/", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        console.log("Fetched expenses:", response.data);
         setExpenses(response.data);
-        setFilteredExpenses(response.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching expenses:", error);
-      });
+      } catch (error) {
+        console.error("Error fetching expenses:", error.response || error);
+      }
+    };
+  
+    fetchExpenses();
   }, []);
+  
 
   // APPLY FILTERS
 
