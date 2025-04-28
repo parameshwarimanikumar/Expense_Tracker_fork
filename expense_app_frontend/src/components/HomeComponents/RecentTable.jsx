@@ -127,7 +127,8 @@ const RecentTable = () => {
                       <td className="p-2 md:p-3">{dayjs(data.date).format('MMM D, YYYY')}</td>
                       <td className="p-2 md:p-3">{data.user}</td>
                       <td className="p-2 md:p-3 text-center">{data.total_count}</td>
-                      <td className="p-2 md:p-3 text-center">₹{data.total_amount.toFixed(2)}</td>
+                      <td className="p-2 md:p-3 text-center">₹{(data.total_amount && !isNaN(data.total_amount) ? data.total_amount : 0).toFixed(2)}</td>
+
                       <td className="p-2 md:p-3 flex justify-center gap-4">
                         <button
                           onClick={() => handleEdit(data)}

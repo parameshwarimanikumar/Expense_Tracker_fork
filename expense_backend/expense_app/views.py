@@ -210,64 +210,60 @@ def item_price_history(request, item_id):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def expense_list_create(request):
-
     if request.method == 'GET':
-        if request.user.role and request.user.role.role_name.lower() == 'admin':
-            expenses = Expense.objects.all()
-        else:
-            expenses = Expense.objects.filter(user=request.user)
-
-        serializer = ExpenseSerializer(expenses, many=True)
+        expenses = Expense.objects.all().order_by('-date')
+        serializer = ExpenseSerializer(expenses, many=True, context={'request': request})
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        data = request.data
         try:
-            with db_transaction.atomic():
-                expense = Expense.objects.create(
-                    user=request.user,
-                    date=data.get('date', timezone.now().date()),
-                    description=data.get('description', ''),
-                    expense_type=data.get('expense_type', 'Product'),
-                    bill=data.get('bill'),
-                    amount=data.get('amount', 0),
-                )
-                # Notify all admins
-                admins = User.objects.filter(role__role_name__iexact="admin")
-                for admin in admins:
-                    Notification.objects.create(
-                        sender=request.user,
-                        receiver=admin,
-                        message=f"{request.user.username} submitted an expense ₹{expense.amount} on {expense.date}",
-                        is_read = False
+            serializer = ExpenseSerializer(data=request.data, context={'request': request})
+            if serializer.is_valid():
+                with db_transaction.atomic():
+                    expense = serializer.save(user=request.user)
+
+                    # Notify all admins
+                    admins = User.objects.filter(role__role_name__iexact="admin")
+                    for admin in admins:
+                        Notification.objects.create(
+                            sender=request.user,
+                            receiver=admin,
+                            message=f"{request.user.username} submitted an expense ₹{expense.amount} on {expense.date}",
+                            is_read=False
+                        )
+
+                    order = Order.objects.create(
+                        created_user=request.user,
+                        calculated_price=expense.amount
                     )
 
-                order = Order.objects.create(
-                    created_user=request.user,
-                    calculated_price = expense.amount
+                    transaction = Transaction.objects.create(
+                        user=request.user,
+                        total_price=expense.amount,
+                        status="Pending",
+                        from_date=timezone.now(),
+                        to_date=timezone.now()
                     )
 
-                transaction = Transaction.objects.create(
-                    user=request.user,
-                    total_price=expense.amount,
-                    # status="Completed" if expense.is_refunded else "Pending",
-                    status="Pending",
-                    from_date=timezone.now(),
-                    to_date=timezone.now()
-                )
+                    TransactionOrder.objects.create(
+                        transaction=transaction,
+                        expense=expense,
+                        order_id=order
+                    )
 
-                TransactionOrder.objects.create(
-                    transaction=transaction,
-                    expense=expense,
-                    order_id=order
-                )
+                  # Ensure `bill` is saved correctly
+                    if 'bill' in request.FILES:
+                        Bill.objects.create(expense=expense, bill=request.FILES['bill'])  # Corrected here
+                        return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)
 
-                if 'bill' in request.FILES:
-                    Bill.objects.create(expense=expense)
+            # Log serializer errors if any
+            print("Expense POST validation errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)
         except Exception as e:
+            print("Expense POST exception:", e)
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 # ✅ RETRIEVE, UPDATE & DELETE Expense

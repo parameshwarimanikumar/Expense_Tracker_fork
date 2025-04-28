@@ -5,15 +5,18 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import AuthenticationFailed
 
+
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
         fields = '__all__'
 
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = '__all__'
+
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -26,78 +29,68 @@ class UserSerializer(serializers.ModelSerializer):
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
 
+
 class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Item
         fields = '__all__'
+
 
 class ItemPriceHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemPriceHistory
         fields = '__all__'
 
+
 class ExpenseSerializer(serializers.ModelSerializer):
     bill_url = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Expense
-        fields = ['id', 'user', 'date', 'description', 'expense_type', 
-                  'bill', 'bill_url','amount', 'is_verified', 'is_refunded', 'created_date', 'updated_date']
-        read_only_fields = ['user', 'is_verified', 'is_refunded', 'created_date', 'updated_date']
-    
+        fields = [
+            'id', 'user', 'date', 'description', 'expense_type',
+            'bill', 'bill_url', 'amount', 'is_verified', 'is_refunded',
+            'created_date', 'updated_date'
+        ]
+        read_only_fields = [
+            'user', 'is_verified', 'is_refunded', 'created_date', 'updated_date'
+        ]
+
     def get_bill_url(self, obj):
-        if obj.bill:
-            return self.context['request'].build_absolute_uri(obj.bill.url)
+        request = self.context.get('request')
+        if obj.bill and request:
+            return request.build_absolute_uri(obj.bill.url)
+        elif obj.bill:
+            return obj.bill.url  # fallback: relative URL if no request
         return None
-    
+
     def update(self, instance, validated_data):
         user = self.context['request'].user
         if 'is_verified' in validated_data or 'is_refunded' in validated_data:
             if not user.role or user.role.role_name.lower() != 'admin':
                 raise serializers.ValidationError({'error': 'Only admin can update verification status'})
         return super().update(instance, validated_data)
-    
+
+
 class BillSerializer(serializers.ModelSerializer):
+    bill_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Bill
-        fields = '__all__'
-        read_only_fields = ['uploaded_date']
+        fields = ['id', 'user', 'file', 'uploaded_date', 'bill_url']
+        read_only_fields = ['uploaded_date', 'user']
 
-# class OrderSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Order
-#         fields = '__all__'
-
-
-# class OrderItemSerializer(serializers.ModelSerializer):
-#     item = ItemSerializer(read_only=True)
-#     item_id = serializers.PrimaryKeyRelatedField(
-#         queryset=Item.objects.all(),
-#         source='item',
-#         write_only=True
-#     )
-
-#     class Meta:
-#         model = OrderItem
-#         fields = ['id', 'item', 'item_id', 'count', 'added_date']
-#         extra_kwargs = {
-#             'added_date': {'read_only': True}
-#         }
-
+    def get_bill_url(self, obj):
+        request = self.context.get('request')
+        if obj.file and request:
+            return request.build_absolute_uri(obj.file.url)
+        elif obj.file:
+            return obj.file.url
+        return None
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
     item = ItemSerializer(read_only=True)
-    # added_date = serializers.DateTimeField(format="%d/%m/%Y %I:%M %p")
-#     added_date = serializers.DateTimeField(
-#     format="%Y-%m-%dT%H:%M:%S.%fZ",
-#     input_formats=[
-#         "%Y-%m-%dT%H:%M:%S.%fZ",
-#         "%Y-%m-%dT%H:%M:%S.%f",
-#         "%Y-%m-%dT%H:%M:%SZ",
-#         "%Y-%m-%d"
-#     ]
-# )
     added_date = serializers.DateTimeField(
         format="%Y-%m-%dT%H:%M:%S.%fZ",
         input_formats=[
@@ -105,21 +98,19 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "%Y-%m-%dT%H:%M:%S.%f",
             "%Y-%m-%dT%H:%M:%SZ",
             "%Y-%m-%d",
-            "iso-8601"  # ✅ fallback that lets DRF parse default ISO strings
+            "iso-8601"  # Fallback that lets DRF parse default ISO strings
         ]
     )
-
-
     order = serializers.PrimaryKeyRelatedField(read_only=True)  # returns only order ID
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'item', 'count', 'added_date', 'order']  # ✅ Include order
+        fields = ['id', 'item', 'count', 'added_date', 'order']
 
 
 class OrderSerializer(serializers.ModelSerializer):
     order_items = OrderItemSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = Order
         fields = ['id', 'created_user', 'calculated_price', 'created_date', 'order_items']
@@ -132,11 +123,13 @@ class TransactionSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['user', 'created_date']
 
+
 class TransactionOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = TransactionOrder
         fields = '__all__'
         read_only_fields = ['created_date']
+
 
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -144,9 +137,9 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['user', 'created_date']
 
+
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
-       
         email = attrs.get('email', '')
         if not email or '@' not in email:
             raise serializers.ValidationError({"email": "Valid email is required."})

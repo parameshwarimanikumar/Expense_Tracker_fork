@@ -99,15 +99,16 @@ def update_order_total(sender, instance, **kwargs):
 #Expense
 
 class Expense(models.Model):
-    EXPENSE_TYPES = [
-        ('Product', 'product'),
-        ('Service', 'service'),
+    EXPENSE_TYPE_CHOICES = [
+        ("Product", "Product"),
+        ("Travel", "Travel"),
+        ("Food", "Food"),
     ]
-    
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField()
     description = models.TextField(blank=True, null=True)
-    expense_type = models.CharField(max_length=20, choices=EXPENSE_TYPES)
+    expense_type = models.CharField(max_length=100, choices=EXPENSE_TYPE_CHOICES, default='Product')  # Example default
     bill = models.FileField(upload_to=get_upload_path, blank=True, null=True)
     amount = models.FloatField(default=0)
     is_verified = models.BooleanField(default=False)
