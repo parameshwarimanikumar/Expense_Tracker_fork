@@ -71,14 +71,15 @@ const ExpenseTable = () => {
     let temp = [...expenses];
     // Filter by type
     if (filters.type) {
-      temp = temp.filter((exp) => exp.type === filters.type);
+      temp = temp.filter((exp) => exp.expense_type === filters.type);
     }
     // Filter by verification status
     if (filters.isVerified !== "") {
       temp = temp.filter(
-        (exp) => exp.isVerified === (filters.isVerified === "true")
+        (exp) => exp.is_verified === (filters.isVerified === "true")
       );
     }
+
     // Filter by date range
     if (filters.startDate && filters.endDate) {
       temp = temp.filter((exp) => {
@@ -215,16 +216,17 @@ const ExpenseTable = () => {
   const handleBillUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const fileType = file.type.split("/")[1];
+      const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
       const fileSize = file.size / 1024 / 1024; // Convert bytes to MB
       if (fileSize > 5) {
         alert("File size exceeds the 5MB limit.");
         return;
       }
-      if (fileType !== "pdf" && fileType !== "jpeg" && fileType !== "png") {
+      if (!allowedTypes.includes(file.type)) {
         alert("Only PDF, JPG, or PNG files are allowed!");
         return;
       }
+
       setExpenseData({ ...expenseData, bill: file });
     }
   };
@@ -256,12 +258,9 @@ const ExpenseTable = () => {
       {showFilter && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg w-96 space-y-3">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Filter</h2>
-            </div>
+            <h2 className="text-xl font-bold mb-4">Filter</h2>
             <div>
-              <label className="block text-gray-700 mb-1">Type</label>
+              <label className="block mb-1">Type</label>
               <select
                 name="type"
                 value={filters.type}
@@ -271,13 +270,11 @@ const ExpenseTable = () => {
                 <option value="">All</option>
                 <option value="Product">Product</option>
                 <option value="Food">Food</option>
-                <option value="Office">Office</option>
+                <option value="Travel">Travel</option>
               </select>
             </div>
             <div>
-              <label className="block text-gray-700 mb-1">
-                Verified Status
-              </label>
+              <label className="block mb-1">Verified Status</label>
               <select
                 name="isVerified"
                 value={filters.isVerified}
@@ -290,7 +287,7 @@ const ExpenseTable = () => {
               </select>
             </div>
             <div>
-              <label className="block text-gray-700 mb-1">Start Date</label>
+              <label className="block mb-1">Start Date</label>
               <input
                 type="date"
                 name="startDate"
@@ -300,7 +297,7 @@ const ExpenseTable = () => {
               />
             </div>
             <div>
-              <label className="block text-gray-700 mb-1">End Date</label>
+              <label className="block mb-1">End Date</label>
               <input
                 type="date"
                 name="endDate"
@@ -309,7 +306,7 @@ const ExpenseTable = () => {
                 className="w-full border p-2 rounded"
               />
             </div>
-            <div className="col-span-full flex justify-end gap-2 mt-2">
+            <div className="flex justify-end gap-2 mt-2">
               <button
                 className="px-4 py-2 bg-gray-300 rounded"
                 onClick={() => {
@@ -401,7 +398,7 @@ const ExpenseTable = () => {
                   <option value="Product">Product</option>
                   <option value="Food">Food</option>
                   <option value="Travel">Travel</option>
-                  <option value="Office">Office</option>
+                 
                 </select>
               </div>
 
@@ -474,7 +471,7 @@ const ExpenseTable = () => {
 
                 <td className="p-3">₹ {parseFloat(exp.amount).toFixed(2)}</td>
                 <td className="p-3">
-                  {exp.isVerified ? (
+                  {exp.is_verified ? (
                     <div className="flex items-center gap-1 text-green-600">
                       <FaCheckCircle /> Verified
                     </div>
@@ -485,12 +482,12 @@ const ExpenseTable = () => {
                   )}
                 </td>
                 <td className="p-3">
-                  {exp.isRefunded ? (
+                  {exp.is_refunded ? (
                     <div className="flex items-center gap-1 text-green-600">
                       <FaRedo /> Refunded
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 text-264653-500">
+                    <div className="flex items-center gap-1 text-[#264653]">
                       <FaRedo /> Pending
                     </div>
                   )}

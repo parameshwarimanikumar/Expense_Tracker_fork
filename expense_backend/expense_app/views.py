@@ -216,143 +216,189 @@ def expense_list_create(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        try:
-            serializer = ExpenseSerializer(data=request.data, context={'request': request})
-            if serializer.is_valid():
-                with db_transaction.atomic():
-                    expense = serializer.save(user=request.user)
-
-                    # Notify all admins
-                    admins = User.objects.filter(role__role_name__iexact="admin")
-                    for admin in admins:
-                        Notification.objects.create(
-                            sender=request.user,
-                            receiver=admin,
-                            message=f"{request.user.username} submitted an expense ₹{expense.amount} on {expense.date}",
-                            is_read=False
-                        )
-
-                    order = Order.objects.create(
-                        created_user=request.user,
-                        calculated_price=expense.amount
-                    )
-
-                    transaction = Transaction.objects.create(
-                        user=request.user,
-                        total_price=expense.amount,
-                        status="Pending",
-                        from_date=timezone.now(),
-                        to_date=timezone.now()
-                    )
-
-                    TransactionOrder.objects.create(
-                        transaction=transaction,
-                        expense=expense,
-                        order_id=order
-                    )
-
-                  # Ensure `bill` is saved correctly
-                    if 'bill' in request.FILES:
-                        Bill.objects.create(expense=expense, bill=request.FILES['bill'])  # Corrected here
-                        return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)
-
-            # Log serializer errors if any
-            print("Expense POST validation errors:", serializer.errors)
+        serializer = ExpenseSerializer(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            # Return validation errors if any
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        except Exception as e:
-            print("Expense POST exception:", e)
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with db_transaction.atomic():
+                # 1) Save the expense itself
+                expense = serializer.save(user=request.user)
+
+                # 2) Notify all admins
+                admins = User.objects.filter(role__role_name__iexact="admin")
+                for admin in admins:
+                    Notification.objects.create(
+                        user=request.user,
+                        recipient=admin,
+                        message=(
+                            f"{request.user.username} submitted an expense "
+                            f"₹{expense.amount} on {expense.date}"
+                        ),
+                        is_read=False
+                    )
+
+                # 3) Create a corresponding Order
+                Order.objects.create(
+                    created_user=request.user,
+                    calculated_price=expense.amount
+                )
+
+                # 4) Create a corresponding Transaction
+                transaction = Transaction.objects.create(
+                    user=request.user,
+                    total_price=expense.amount,
+                    status="Pending",
+                    from_date=timezone.now(),
+                    to_date=timezone.now()
+                )
+
+                # 5) Link them in TransactionOrder
+                TransactionOrder.objects.create(
+                    transaction=transaction,
+                    expense=expense,
+                    order_id=Order.objects.get(created_user=request.user, calculated_price=expense.amount)
+                )
+
+                # 6) Save uploaded bill file (if any) into Expense.bill
+                if 'bill' in request.FILES:
+                    expense.bill = request.FILES['bill']
+                    expense.save()
+
+                # 7) Return the fully serialized expense (including bill_url)
+                out_serializer = ExpenseSerializer(
+                    expense,
+                    context={'request': request}
+                )
+                return Response(out_serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as exc:
+            # Catch any unexpected errors
+            return Response(
+                {"error": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from django.db import transaction as db_transaction
+from .models import Expense, Notification, Order, Transaction, TransactionOrder
+from .serializers import ExpenseSerializer
 
-# ✅ RETRIEVE, UPDATE & DELETE Expense
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def expense_detail(request, pk):
-    try:
-        expense = Expense.objects.get(pk=pk)
-    except Expense.DoesNotExist:
-        return Response({"error": "Expense not found"}, status=status.HTTP_404_NOT_FOUND)
+    # 1) Fetch or 404
+    expense = get_object_or_404(Expense, pk=pk)
 
+    # 2) GET
     if request.method == 'GET':
-        return Response(ExpenseSerializer(expense).data)
+        serializer = ExpenseSerializer(expense, context={'request': request})
+        return Response(serializer.data)
 
+    # 3) PUT (edit)
     elif request.method == 'PUT':
         data = request.data
+        user = request.user
+
+        # Optional: enforce only admin can change verification/refund
+        if ('is_verified' in data or 'is_refunded' in data) and (
+            not user.role or user.role.role_name.lower() != 'admin'
+        ):
+            return Response(
+                {"error": "Only admin can update verification or refund status."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         try:
             with db_transaction.atomic():
-                if ('is_verified' in data or 'is_refunded' in data) and (not request.user.role or request.user.role.role_name.lower() != 'admin'):
-                    return Response({"error": "Only admin can update verification or refund status."}, status=status.HTTP_403_FORBIDDEN)
-
-
-                expense.description = data.get('description', expense.description)
+                # — Update simple fields —
+                expense.description  = data.get('description', expense.description)
                 expense.expense_type = data.get('expense_type', expense.expense_type)
-                expense.amount = data.get('amount', expense.amount)
-                
+                expense.amount       = data.get('amount', expense.amount)
+
                 if 'is_verified' in data:
                     expense.is_verified = data['is_verified']
                 if 'is_refunded' in data:
                     expense.is_refunded = data['is_refunded']
 
-                if 'is_verified' in data and data['is_verified'] == True:
-                    Notification.objects.create(
-                        sender=user,
-                        receiver=expense.user,
-                        message=f"Your expense of ₹{expense.amount} on {expense.date} has been verified",
-                        is_read = True
-                    )
-
+                # — NEW: handle bill file replacement —
+                if 'bill' in request.FILES:
+                    expense.bill = request.FILES['bill']
 
                 expense.save()
 
-                # ✅ Step 2: Find the most recent order or create a new one
-                order = Order.objects.filter(created_user=request.user).order_by('-created_date').first()
+                # Optional: send notification when admin verifies
+                if data.get('is_verified') is True:
+                    Notification.objects.create(
+                        user=request.user,
+                        recipient=expense.user,
+                        message=(
+                            f"Your expense of ₹{expense.amount}"
+                            f" on {expense.date} has been verified"
+                        ),
+                        is_read=False
+                    )
 
+                # — Recalculate or recreate associated Order/Transaction as you did before —
+                order = (
+                    Order.objects.filter(created_user=user)
+                    .order_by('-created_date')
+                    .first()
+                )
                 if not order:
                     order = Order.objects.create(
-                        created_user=request.user,
-                        calculated_price=expense.amount 
+                        created_user=user,
+                        calculated_price=expense.amount
                     )
                 else:
-                    # If an order exists, update its price
                     order.calculated_price = expense.amount
                     order.save()
 
-                # ✅ Step 3: Update TransactionOrder
                 transaction_order, created = TransactionOrder.objects.get_or_create(
                     expense=expense,
-                    defaults={"order_id": order}
+                    defaults={'order_id': order}
                 )
-
                 if not created:
                     transaction_order.order_id = order
                     transaction_order.save()
 
-                # ✅ Step 4: Update Transaction
-                transaction_obj = transaction_order.transaction if transaction_order else None
-                if transaction_obj:
-                    transaction_obj.total_price = expense.amount
-                    transaction_obj.status = "Completed" if expense.is_refunded else "Pending"
-                    transaction_obj.save()
+                txn = transaction_order.transaction
+                if txn:
+                    txn.total_price = expense.amount
+                    txn.status = 'Completed' if expense.is_refunded else 'Pending'
+                    txn.save()
 
-                return Response(ExpenseSerializer(expense).data, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
-    elif request.method == 'DELETE':
-        user = request.user
+                # — Return the updated expense, including new bill_url —
+                out_serializer = ExpenseSerializer(
+                    expense,
+                    context={'request': request}
+                )
+                return Response(out_serializer.data, status=status.HTTP_200_OK)
 
-        # Only allow if user is owner or admin
-        if expense.user != user and (not user.role or user.role.role_name.lower() != 'admin'):
-            return Response({"error": "You do not have permission to delete this expense."}, status=status.HTTP_403_FORBIDDEN)
+        except Exception as exc:
+            return Response(
+                {"error": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        try:
-            with db_transaction.atomic():
-                expense.delete()
-                return Response({"message": "Expense deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    # 4) DELETE
+    else:
+        if expense.user != request.user and (
+            not request.user.role or
+            request.user.role.role_name.lower() != 'admin'
+        ):
+            return Response(
+                {"error": "You do not have permission to delete this expense."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        expense.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # Order Views
 
