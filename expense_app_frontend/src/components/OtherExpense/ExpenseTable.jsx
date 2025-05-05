@@ -231,6 +231,32 @@ const ExpenseTable = () => {
     }
   };
 
+  const handleViewMyData = async () => {
+    try {
+      const token = localStorage.getItem("access");
+
+      if (!token) {
+        alert("Please login to view your data.");
+        return;
+      }
+
+      const response = await axios.get(
+        "http://localhost:8000/api/expenses/mydata/", // Assuming a route to get user-specific expenses
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Set expenses or show data as per requirement
+      console.log("User Data:", response.data);
+      setExpenses(response.data); // Update expenses with fetched data
+    } catch (error) {
+      console.error("Error fetching user data:", error.response || error);
+    }
+  };
+
   return (
     <div className="p-6 bg-white rounded-lg">
       {/* Header */}
@@ -253,6 +279,12 @@ const ExpenseTable = () => {
           </button>
         </div>
       </div>
+      <button
+        className="bg-[#124451] text-white px-4 py-1 rounded-full"
+        onClick={handleViewMyData} // Button for "View My Data"
+      >
+        View My Data
+      </button>
 
       {/* Filter Modal */}
       {showFilter && (
@@ -306,18 +338,15 @@ const ExpenseTable = () => {
                 className="w-full border p-2 rounded"
               />
             </div>
-            <div className="flex justify-end gap-2 mt-2">
+            <div className="flex justify-between mt-4">
               <button
-                className="px-4 py-2 bg-gray-300 rounded"
-                onClick={() => {
-                  resetFilters();
-                  setShowFilter(false);
-                }}
+                className="bg-gray-300 px-4 py-2 rounded"
+                onClick={resetFilters}
               >
-                Cancel
+                Reset
               </button>
               <button
-                className="px-4 py-2 bg-[#124451] text-white rounded"
+                className="bg-[#124451] text-white px-4 py-2 rounded"
                 onClick={() => setShowFilter(false)}
               >
                 Apply
@@ -398,7 +427,6 @@ const ExpenseTable = () => {
                   <option value="Product">Product</option>
                   <option value="Food">Food</option>
                   <option value="Travel">Travel</option>
-                 
                 </select>
               </div>
 
@@ -508,27 +536,38 @@ const ExpenseTable = () => {
       </div>
 
       {/* Pagination Controls */}
-      <div className="flex justify-end items-center mt-4 gap-2">
+      <div className="flex justify-center items-center mt-4 gap-2">
         <button
-          className="p-2 rounded-full bg-gray-200"
-          onClick={() => handlePagination(Math.max(1, currentPage - 1))}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+          onClick={() => handlePagination(currentPage - 1)}
           disabled={currentPage === 1}
         >
           <FaChevronLeft />
         </button>
-        <span className="px-3 text-gray-700 font-semibold">
-          Page {currentPage} of {Math.ceil(finalExpenses.length / itemsPerPage)}
-        </span>
+
+        {/* Page Numbers */}
+        {Array.from({
+          length: Math.ceil(finalExpenses.length / itemsPerPage),
+        }).map((_, index) => {
+          const pageNum = index + 1;
+          return (
+            <button
+              key={pageNum}
+              onClick={() => handlePagination(pageNum)}
+              className={`px-3 py-1 rounded ${
+                pageNum === currentPage
+                  ? "bg-[#124451] text-white"
+                  : "bg-gray-100 text-gray-800"
+              }`}
+            >
+              {pageNum}
+            </button>
+          );
+        })}
+
         <button
-          className="p-2 rounded-full bg-gray-200"
-          onClick={() =>
-            handlePagination(
-              Math.min(
-                Math.ceil(finalExpenses.length / itemsPerPage),
-                currentPage + 1
-              )
-            )
-          }
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+          onClick={() => handlePagination(currentPage + 1)}
           disabled={
             currentPage === Math.ceil(finalExpenses.length / itemsPerPage)
           }

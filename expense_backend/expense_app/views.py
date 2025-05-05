@@ -281,14 +281,13 @@ def expense_list_create(request):
             )
 
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
-from django.db import transaction as db_transaction
-from .models import Expense, Notification, Order, Transaction, TransactionOrder
-from .serializers import ExpenseSerializer
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_expenses(request):
+    user_expenses = Expense.objects.filter(user=request.user)
+    serializer = ExpenseSerializer(user_expenses, many=True)
+    return Response(serializer.data)
+
 
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
