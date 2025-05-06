@@ -189,8 +189,10 @@ const ExpenseTable = () => {
   const filteredByMonth = filteredExpenses.filter(
     (exp) => dayjs(exp.date).format("YYYY-MM") === currentMonth
   );
+  const [selectedMonth] = useState("");
+
   const finalExpenses =
-    filteredByMonth.length > 0 ? filteredByMonth : filteredExpenses;
+    selectedMonth === "" ? filteredExpenses : filteredByMonth;
 
   const indexOfLastExpense = currentPage * itemsPerPage;
   const indexOfFirstExpense = indexOfLastExpense - itemsPerPage;
@@ -231,30 +233,34 @@ const ExpenseTable = () => {
     }
   };
 
-  const handleViewMyData = async () => {
-    try {
-      const token = localStorage.getItem("access");
+  const [viewingMyData, setViewingMyData] = useState(false);
 
-      if (!token) {
-        alert("Please login to view your data.");
-        return;
-      }
+  const handleViewToggle = async () => {
+    const token = localStorage.getItem("access");
+    if (!token) {
+      alert("Please login to continue.");
+      return;
+    }
 
+    if (!viewingMyData) {
+      // Fetch user's own data
       const response = await axios.get(
-        "http://localhost:8000/api/expenses/mydata/", // Assuming a route to get user-specific expenses
+        "http://localhost:8000/api/expenses/mydata/",
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
-
-      // Set expenses or show data as per requirement
-      console.log("User Data:", response.data);
-      setExpenses(response.data); // Update expenses with fetched data
-    } catch (error) {
-      console.error("Error fetching user data:", error.response || error);
+      console.log("user data", response.data);
+      setExpenses(response.data);
+    } else {
+      // Fetch all expenses again
+      const response = await axios.get("http://localhost:8000/api/expenses/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setExpenses(response.data);
     }
+
+    setViewingMyData(!viewingMyData);
   };
 
   return (
@@ -281,9 +287,9 @@ const ExpenseTable = () => {
       </div>
       <button
         className="bg-[#124451] text-white px-4 py-1 rounded-full"
-        onClick={handleViewMyData} // Button for "View My Data"
+        onClick={handleViewToggle}
       >
-        View My Data
+        {viewingMyData ? "View All Data" : "View My Data"}
       </button>
 
       {/* Filter Modal */}
