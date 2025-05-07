@@ -170,7 +170,13 @@ export const deleteOrdersByDate = async (date, user) => {
 // ✅ Get grouped orders
 export const getGroupedOrders = async (page, pageSize, filters) => {
   try {
-    const response = await axiosInstance.post('/orders/grouped', { page, pageSize, filters });
+    const params = new URLSearchParams({
+      page,
+      page_size: pageSize,
+      ...filters,
+    });
+
+    const response = await axiosInstance.get(`/orders/grouped-by-date/?${params.toString()}`);
     return response.data;
   } catch (error) {
     console.error('Get grouped orders error:', error);
@@ -178,10 +184,12 @@ export const getGroupedOrders = async (page, pageSize, filters) => {
   }
 };
 
+
 // ✅ Fetch available dates (example)
 export const getAvailableDates = async () => {
   try {
-    const response = await axiosInstance.get('/orders/available_dates');
+    const response = await axiosInstance.get('/orders/available-dates/');
+
     return response.data;
   } catch (error) {
     console.error("Fetch available dates error:", error);

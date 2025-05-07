@@ -2,15 +2,16 @@
 import React, { useEffect, useState } from 'react';
 import * as echarts from 'echarts';
 
+
+const monthlyData = {
+  months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  regularExpenses: [252, 420, 256, 221, 338, 176, 252, 271, 364, 229, 242, 301],
+  otherExpenses: [180, 199, 102, 51, 137, 285, 207, 87, 179, 241, 227, 70]
+};
+
 const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-
-  const monthlyData = {
-    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    regularExpenses: [252, 420, 256, 221, 338, 176, 252, 271, 364, 229, 242, 301],
-    otherExpenses: [180, 199, 102, 51, 137, 285, 207, 87, 179, 241, 227, 70]
-  };
-
+  
   useEffect(() => {
     const chartDom = document.getElementById('expenses-chart');
     if (chartDom) {
