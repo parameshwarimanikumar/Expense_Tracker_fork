@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
-import { fetchExpenses, fetchOrderItemsByDate, deleteOrdersByDate } from '../../api_service/api';
-import dayjs from 'dayjs';
-import { Tooltip } from 'react-tooltip';
-import AddItemTable from './AddItemTable';
+import {
+  fetchExpenses,
+  fetchOrderItemsByDate,
+  deleteOrdersByDate,
+} from "../../api_service/api";
+import dayjs from "dayjs";
+import { Tooltip } from "react-tooltip";
+import AddItemTable from "./AddItemTable";
 
 const RecentTable = () => {
   const [recentData, setRecentData] = useState([]);
@@ -11,7 +15,7 @@ const RecentTable = () => {
   const [editingData, setEditingData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+  const currentUser = JSON.parse(localStorage.getItem("user") || "null");
 
   const fetchRecent = async () => {
     setLoading(true);
@@ -19,7 +23,7 @@ const RecentTable = () => {
       const data = await fetchExpenses();
       setRecentData(data.slice(0, 10)); // Show latest 10 entries
     } catch (error) {
-      console.error('Error fetching recent data:', error);
+      console.error("Error fetching recent data:", error);
     } finally {
       setLoading(false);
     }
@@ -30,7 +34,7 @@ const RecentTable = () => {
   }, []);
 
   const handleEdit = async (item) => {
-    const today = dayjs().format('YYYY-MM-DD');
+    const today = dayjs().format("YYYY-MM-DD");
 
     if (item.is_refunded) {
       alert("Refunded orders cannot be edited.");
@@ -52,7 +56,7 @@ const RecentTable = () => {
       });
       setIsEditing(true);
     } catch (error) {
-      console.error('Error fetching order items:', error);
+      console.error("Error fetching order items:", error);
     }
   };
 
@@ -67,7 +71,7 @@ const RecentTable = () => {
       alert("Orders deleted successfully.");
       fetchRecent();
     } catch (error) {
-      console.error('Error deleting orders:', error);
+      console.error("Error deleting orders:", error);
       alert("Failed to delete orders.");
     }
   };
@@ -83,14 +87,16 @@ const RecentTable = () => {
     fetchRecent();
   };
 
-  const today = dayjs().format('YYYY-MM-DD');
+  const today = dayjs().format("YYYY-MM-DD");
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 w-full">
       {/* Recent Entries Table */}
       <div className="bg-white rounded-xl p-4 md:p-6 flex-1 overflow-x-auto">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg md:text-xl font-bold text-[#124451]">Recently Added</h2>
+          <h2 className="text-lg md:text-xl font-bold text-[#124451]">
+            Recently Added
+          </h2>
         </div>
 
         <div className="overflow-x-auto">
@@ -107,14 +113,18 @@ const RecentTable = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="text-center p-4">Loading...</td>
+                  <td colSpan="5" className="text-center p-4">
+                    Loading...
+                  </td>
                 </tr>
               ) : recentData.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center p-4">No recent entries found</td>
+                  <td colSpan="5" className="text-center p-4">
+                    No recent entries found
+                  </td>
                 </tr>
               ) : (
-                recentData.map((data) => {
+                recentData.map((data, index) => {
                   const isToday = data.date === today;
                   const isRefunded = data.is_refunded;
                   const isCurrentUser = data.user === currentUser?.username;
@@ -122,18 +132,44 @@ const RecentTable = () => {
                   const canEdit = isToday && isCurrentUser && !isRefunded;
                   const canDelete = isToday;
 
+                  // Safely create a unique key and tooltip ID
+                  const safeKey =
+                    data.order_id ??
+                    data.id ??
+                    `${data.user || "unknown"}-${
+                      data.date || "nodate"
+                    }-${index}`;
+
+                  const editTooltipId = `edit-tooltip-${safeKey}`;
+                  const deleteTooltipId = `delete-tooltip-${safeKey}`;
+
+                  
+
                   return (
-                    <tr key={data.order_id} className="text-sm font-semibold border-b border-gray-100">
-                      <td className="p-2 md:p-3">{dayjs(data.date).format('MMM D, YYYY')}</td>
+                    <tr
+                      key={safeKey}
+                      className="text-sm font-semibold border-b border-gray-100"
+                    >
+                      <td className="p-2 md:p-3">
+                        {dayjs(data.date).format("MMM D, YYYY")}
+                      </td>
                       <td className="p-2 md:p-3">{data.user}</td>
-                      <td className="p-2 md:p-3 text-center">{data.total_count}</td>
-                      <td className="p-2 md:p-3 text-center">₹{(data.total_amount && !isNaN(data.total_amount) ? data.total_amount : 0).toFixed(2)}</td>
+                      <td className="p-2 md:p-3 text-center">
+                        {data.total_count}
+                      </td>
+                      <td className="p-2 md:p-3 text-center">
+                        ₹
+                        {(data.total_amount && !isNaN(data.total_amount)
+                          ? data.total_amount
+                          : 0
+                        ).toFixed(2)}
+                      </td>
 
                       <td className="p-2 md:p-3 flex justify-center gap-4">
                         <button
                           onClick={() => handleEdit(data)}
                           disabled={!canEdit}
-                          data-tooltip-id={`edit-tooltip-${data.order_id}`}
+                          data-tooltip-id={editTooltipId}
                           data-tooltip-content={
                             canEdit
                               ? ""
@@ -145,25 +181,41 @@ const RecentTable = () => {
                               ? "You can only edit your own entries"
                               : ""
                           }
-                          className={`${!canEdit ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          className={`${
+                            !canEdit
+                              ? "cursor-not-allowed opacity-50"
+                              : "cursor-pointer"
+                          }`}
                         >
-                          <FaEdit size={14} color={canEdit ? "#16A63D" : "gray"} />
+                          <FaEdit
+                            size={14}
+                            color={canEdit ? "#16A63D" : "gray"}
+                          />
                         </button>
 
                         <button
                           onClick={() => handleDelete(data)}
                           disabled={!canDelete}
-                          data-tooltip-id={`delete-tooltip-${data.order_id}`}
+                          data-tooltip-id={deleteTooltipId}
                           data-tooltip-content={
-                            canDelete ? "" : "Only today's entries can be deleted"
+                            canDelete
+                              ? ""
+                              : "Only today's entries can be deleted"
                           }
-                          className={`${!canDelete ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          className={`${
+                            !canDelete
+                              ? "cursor-not-allowed opacity-50"
+                              : "cursor-pointer"
+                          }`}
                         >
-                          <FaTrash size={14} color={canDelete ? "red" : "gray"} />
+                          <FaTrash
+                            size={14}
+                            color={canDelete ? "red" : "gray"}
+                          />
                         </button>
 
-                        <Tooltip id={`edit-tooltip-${data.order_id}`} />
-                        <Tooltip id={`delete-tooltip-${data.order_id}`} />
+                        <Tooltip id={editTooltipId} />
+                        <Tooltip id={deleteTooltipId} />
                       </td>
                     </tr>
                   );
