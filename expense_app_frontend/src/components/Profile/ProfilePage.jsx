@@ -46,7 +46,8 @@ const ProfilePage = () => {
     <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50 p-4">
       <div className="bg-blue-50 rounded-2xl shadow-xl flex max-w-6xl w-full h-[90vh] overflow-hidden">
         {/* Sidebar */}
-        <div className="bg-cyan-900 text-white w-64 rounded-l-2xl p-6 flex flex-col items-center">
+        <div className="bg-[#0E4351] text-white w-64 rounded-l-2xl p-6 flex flex-col items-center">
+
           <button
             className="self-start mb-4 text-white hover:text-gray-300"
             onClick={() => navigate("/")}

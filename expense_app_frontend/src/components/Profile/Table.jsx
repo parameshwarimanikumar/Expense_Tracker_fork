@@ -12,7 +12,7 @@ import {
 import dayjs from "dayjs";
 import axios from "axios";
 
-const ExpenseTable = () => {
+const Table = () => {
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [filters, setFilters] = useState({
@@ -232,10 +232,6 @@ const ExpenseTable = () => {
       setExpenseData({ ...expenseData, bill: file });
     }
   };
-
-  
-
- 
 
   return (
     <div className="p-6 bg-white rounded-lg">
@@ -554,4 +550,4 @@ const ExpenseTable = () => {
   );
 };
 
-export default ExpenseTable;
+export default Table;
