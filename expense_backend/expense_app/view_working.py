@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.decorators import parser_classes
 from django.utils.timezone import datetime,now,make_aware
 from datetime import date
 import json
@@ -24,8 +26,10 @@ from .permissions import *
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([AllowAny]) 
+@parser_classes([MultiPartParser, FormParser])  # ✅ add this
 def register_user(request):
-    serializer = UserSerializer(data=request.data)
+    serializer = UserSerializer(data=request.data, files=request.FILES)
+
     if serializer.is_valid():
         user = serializer.save()
         refresh = RefreshToken.for_user(user)

@@ -3,19 +3,22 @@ from .models import *
 from django.contrib.auth.admin import UserAdmin
 
 class CustomUserAdmin(UserAdmin):
-    list_display = ('id','email', 'username', 'role', 'is_staff')
+    list_display = ('id', 'email', 'username', 'role', 'is_staff', 'profile_picture')
+
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal info', {'fields': ('username', 'role')}),
+        ('Personal info', {'fields': ('username', 'role', 'profile_picture')}),
         ('Permissions', {'fields': ('is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
+
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'username', 'role', 'password1', 'password2'),
+            'fields': ('email', 'username', 'role', 'profile_picture', 'password1', 'password2'),
         }),
     )
+
 
 class CustomRole(admin.ModelAdmin):
     list_display = ('id','role_name', 'description')
@@ -28,7 +31,7 @@ class CustomItem(admin.ModelAdmin):
 
 class CustomItemPriceHistory(admin.ModelAdmin):
     list_display = ('id','item','price','date')
-
+ 
 admin.site.register(User, CustomUserAdmin)
 admin.site.register(Role, CustomRole)
 admin.site.register(Category, CustomCategory)

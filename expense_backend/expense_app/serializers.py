@@ -20,15 +20,23 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
-    
+    profile_picture = serializers.SerializerMethodField()  # <-- change here
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'role', 'created_date', 'updated_date']
-    
+        fields = ['id', 'username', 'email', 'password', 'role', 'profile_picture', 'created_date', 'updated_date']
+
+    def get_profile_picture(self, obj):
+        request = self.context.get('request')
+        if obj.profile_picture and request:
+            return request.build_absolute_uri(obj.profile_picture.url)
+        elif obj.profile_picture:
+            return obj.profile_picture.url
+        return None
+
     def create(self, validated_data):
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
-
 
 class ItemSerializer(serializers.ModelSerializer):
     class Meta:

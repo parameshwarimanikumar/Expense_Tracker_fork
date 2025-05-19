@@ -11,6 +11,8 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import AllowAny
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.decorators import parser_classes  # ✅ this is the missing one
 from django.utils.timezone import datetime,now,make_aware
 from datetime import date
 import json
@@ -38,6 +40,25 @@ def register_user(request):
             'access': str(refresh.access_token),
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def update_profile_picture(request):
+    user = request.user
+    if 'profile_picture' not in request.FILES:
+        return Response({'error': 'No file uploaded.'}, status=400)
+
+    user.profile_picture = request.FILES['profile_picture']
+    user.save()
+
+    # Create full URL for profile picture
+    full_url = request.build_absolute_uri(user.profile_picture.url)
+
+    return Response({
+        'message': 'Profile picture updated successfully.',
+        'profile_picture_url': full_url
+    })
 
 @api_view(['POST'])
 @authentication_classes([])  
