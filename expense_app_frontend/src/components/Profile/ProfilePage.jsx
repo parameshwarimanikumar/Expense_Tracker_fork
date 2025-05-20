@@ -108,12 +108,25 @@ const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
           className="w-36 h-36 rounded-full object-cover mb-4 border-2 border-gray-300"
         />
         {isEditing && (
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="mb-4"
-          />
+          <>
+            <input
+              type="file"
+              accept="image/*"
+              id="profilePictureInput"
+              onChange={handleFileChange}
+              className="hidden"
+              ref={(input) => (window.profileInputRef = input)}
+            />
+            <button
+              onClick={() =>
+                window.profileInputRef && window.profileInputRef.click()
+              }
+              className="px-3 py-1 bg-gray-200 text-sm text-gray-800 rounded hover:bg-gray-300 flex items-center gap-2"
+            >
+              <FontAwesomeIcon icon={faEdit} />
+              <span>Edit Picture</span>
+            </button>
+          </>
         )}
       </div>
 

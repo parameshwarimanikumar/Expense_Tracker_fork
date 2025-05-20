@@ -1,155 +1,156 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { FaPen } from 'react-icons/fa'; // Pencil icon
 
 const PersonalInfo = () => {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    first_name: "",
-    email: "",
-    password: "",
-    profile_picture: null,
-    previewPic: "",
+    first_name: '',
+    email: '',
+    password: '',
+    profilePic: null,
+    previewPic: ''
   });
 
   useEffect(() => {
-    axios.get("/api/user/profile/").then((res) => {
-      setFormData((prev) => ({
+    axios.get('/api/profile/', {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('access')}`
+      }
+    }).then(res => {
+      const { first_name, email, profile_picture } = res.data;
+      setFormData(prev => ({
         ...prev,
-        first_name: res.data.first_name,
-        email: res.data.email,
-        previewPic: res.data.profile_picture,
+        first_name,
+        email,
+        previewPic: profile_picture
       }));
     });
   }, []);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = e => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = e => {
     const file = e.target.files[0];
-    setFormData({
-      ...formData,
-      profile_picture: file,
-      previewPic: URL.createObjectURL(file),
-    });
+    setFormData(prev => ({
+      ...prev,
+      profilePic: file,
+      previewPic: URL.createObjectURL(file)
+    }));
   };
 
   const handleSave = async () => {
     const data = new FormData();
-    data.append("first_name", formData.first_name);
-    data.append("email", formData.email);
-    if (formData.password) {
-      data.append("password", formData.password);
-    }
-    if (formData.profile_picture) {
-      data.append("profile_picture", formData.profile_picture);
-    }
+    data.append('first_name', formData.first_name);
+    data.append('email', formData.email);
+    if (formData.password) data.append('password', formData.password);
+    if (formData.profilePic) data.append('profile_picture', formData.profilePic);
 
     try {
-      await axios.put("/api/user/update/", data);
+      await axios.put('/api/profile/', data, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access')}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      alert('Profile updated successfully');
       setEditMode(false);
-    } catch (error) {
-      console.error("Error updating user:", error);
+    } catch {
+      alert('Error updating profile');
     }
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="w-[400px] bg-white rounded-xl shadow-2xl p-8 relative z-10">
-        <h2 className="text-2xl font-bold text-center text-slate-800 mb-6">
-          Personal Info
-        </h2>
+    <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow-md">
+      <h2 className="text-xl font-semibold mb-4 text-center">Personal Info</h2>
 
-        <div className="flex flex-col items-center mb-6 relative">
-          <img
-            src={formData.previewPic}
-            alt="Profile"
-            className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
-          />
-          {editMode && (
-            <label className="absolute bottom-0 right-[calc(50%-12px)] cursor-pointer bg-white rounded-full p-1 shadow-md">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5 text-slate-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              <input
-                type="file"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </label>
-          )}
-        </div>
-
-        <div className="mb-4">
-          <input
-            name="first_name"
-            value={formData.first_name}
-            onChange={handleChange}
-            disabled={!editMode}
-            placeholder="User name"
-            className="w-full px-4 py-2 border-b-2 text-sm placeholder-slate-400 focus:outline-none focus:border-blue-600 disabled:bg-transparent"
-          />
-        </div>
-
-        <div className="mb-4">
-          <input
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            disabled={!editMode}
-            placeholder="Email"
-            className="w-full px-4 py-2 border-b-2 text-sm placeholder-slate-400 focus:outline-none focus:border-blue-600 disabled:bg-transparent"
-          />
-        </div>
-
-        <div className="mb-4">
-          <input
-            name="password"
-            type="password"
-            onChange={handleChange}
-            disabled={!editMode}
-            placeholder="Password"
-            className="w-full px-4 py-2 border-b-2 text-sm placeholder-slate-400 focus:outline-none focus:border-blue-600 disabled:bg-transparent"
-          />
-        </div>
-
-        <div className="flex justify-center gap-4 mt-6">
-          {editMode ? (
-            <>
-              <button
-                onClick={handleSave}
-                className="bg-teal-700 text-white font-medium px-6 py-2 rounded-md hover:bg-teal-800 transition-all duration-200"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="bg-gray-300 text-slate-700 font-medium px-6 py-2 rounded-md hover:bg-gray-400 transition-all duration-200"
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setEditMode(true)}
-              className="bg-blue-700 text-white font-medium px-6 py-2 rounded-md hover:bg-blue-800 transition-all duration-200"
+      <div className="relative flex flex-col items-center mb-4">
+        <img
+          src={formData.previewPic}
+          alt="Profile"
+          className="w-24 h-24 rounded-full object-cover border"
+        />
+        {editMode && (
+          <>
+            <label
+              htmlFor="profile-upload"
+              className="absolute bottom-0 right-[38%] bg-white border p-1 rounded-full cursor-pointer shadow hover:bg-gray-100"
+              title="Change profile picture"
             >
-              Edit Info
+              <FaPen className="text-gray-700 text-sm" />
+            </label>
+            <input
+              id="profile-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </>
+        )}
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">Full Name</label>
+        <input
+          name="first_name"
+          value={formData.first_name}
+          onChange={handleChange}
+          disabled={!editMode}
+          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+        />
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">Email</label>
+        <input
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          disabled={!editMode}
+          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+        />
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">New Password</label>
+        <input
+          name="password"
+          type="password"
+          onChange={handleChange}
+          disabled={!editMode}
+          placeholder="Enter new password"
+          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+        />
+      </div>
+
+      <div className="flex justify-center gap-4 mt-6">
+        {editMode ? (
+          <>
+            <button
+              onClick={handleSave}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
+            >
+              Save
             </button>
-          )}
-        </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 transition"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setEditMode(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition"
+          >
+            Edit Info
+          </button>
+        )}
       </div>
     </div>
   );
