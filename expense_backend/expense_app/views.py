@@ -60,6 +60,36 @@ def update_profile_picture(request):
         'profile_picture_url': full_url
     })
 
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def user_profile(request):
+    user = request.user
+
+    if request.method == 'GET':
+        return Response({
+            'name': user.first_name,
+            'email': user.email,
+            'profile_picture': request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else '',
+        })
+
+    elif request.method == 'PUT':
+        user.first_name = request.data.get('name', user.first_name)
+        user.email = request.data.get('email', user.email)
+
+        if request.data.get('password'):
+            user.set_password(request.data['password'])
+
+        if 'profile_picture' in request.FILES:
+            user.profile_picture = request.FILES['profile_picture']
+
+        user.save()
+
+        return Response({'detail': 'Profile updated successfully'})
+
+
+
 @api_view(['POST'])
 @authentication_classes([])  
 @permission_classes([AllowAny])  

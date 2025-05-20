@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Table from "./Table";
 import Mydata from "./Mydata";
-import axios from "axios";
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -10,7 +9,9 @@ import {
   faUser,
   faFileAlt,
   faSignOutAlt,
-  faUpload,
+  faEdit,
+  faSave,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 
 const COLORS = ["#0E4351", "#971C8A", "#6B4BB0"];
@@ -29,19 +30,173 @@ const data2 = [
 
 const BACKEND_URL = "http://localhost:8000";
 
+const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: user.name || "",
+    email: user.email || "",
+    profile_picture: user.profile_picture || "/default-avatar.png",
+    profile_picture_file: null,
+  });
+
+  useEffect(() => {
+    setFormData({
+      name: user.name || "",
+      email: user.email || "",
+      profile_picture: user.profile_picture || "/default-avatar.png",
+      profile_picture_file: null,
+    });
+  }, [user]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData((prev) => ({
+        ...prev,
+        profile_picture_file: file,
+        profile_picture: URL.createObjectURL(file),
+      }));
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setFormData({
+      name: user.name || "",
+      email: user.email || "",
+      profile_picture: user.profile_picture || "/default-avatar.png",
+      profile_picture_file: null,
+    });
+  };
+
+  const handleSave = async () => {
+    // Simulated save - replace with API call if needed
+    onUpdateUser({
+      ...user,
+      name: formData.name,
+      email: formData.email,
+      profile_picture: formData.profile_picture,
+    });
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-6 shadow max-w-xl mx-auto">
+      <button
+        onClick={() => setActiveView("dashboard")}
+        className="mb-4 text-blue-600 hover:underline flex items-center gap-2"
+      >
+        <FontAwesomeIcon icon={faArrowLeft} />
+        Back
+      </button>
+
+      <h1 className="text-2xl font-semibold and italic mb-4">Personal Info</h1>
+
+      <div className="mb-4 flex flex-col items-center">
+        <img
+          src={formData.profile_picture}
+          alt="Profile"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = "/default-avatar.png";
+          }}
+          className="w-36 h-36 rounded-full object-cover mb-4 border-2 border-gray-300"
+        />
+        {isEditing && (
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="mb-4"
+          />
+        )}
+      </div>
+
+      {!isEditing ? (
+        <>
+          <center>
+            <div className="mb-4">
+              <p className="mb-2 text-lg">
+                <strong>Name:</strong> {user.name}
+              </p>
+              <p className="mb-2 text-lg">
+                <strong>Email:</strong> {user.email || "No email provided"}
+              </p>
+            </div>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 transition-all duration-200"
+            >
+              <FontAwesomeIcon icon={faEdit} />
+              <span>Edit</span>
+            </button>
+          </center>
+        </>
+      ) : (
+        <>
+          <label className="block mb-4">
+            <strong className="block mb-1">Name:</strong>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </label>
+
+          <label className="block mb-4">
+            <strong className="block mb-1">Email:</strong>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </label>
+
+          <div className="flex gap-4 mt-4">
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-[#0E4351] text-white rounded hover:bg-[#0b3844] flex items-center gap-2 transition-all"
+            >
+              <FontAwesomeIcon icon={faSave} />
+              <span>Save</span>
+            </button>
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 flex items-center gap-2 transition-all"
+            >
+              <FontAwesomeIcon icon={faTimes} />
+              <span>Cancel</span>
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const ProfilePage = () => {
   const navigate = useNavigate();
+
   const [user, setUser] = useState({
     name: "",
     email: "",
-    profile_picture: "",
+    profile_picture: "/default-avatar.png",
   });
-  const [showMyExpense, setShowMyExpense] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
-  // Helper to ensure profile_picture is full URL or fallback
+  // activeView: 'dashboard', 'personalInfo', 'myExpense'
+  const [activeView, setActiveView] = useState("dashboard");
+
   const normalizeProfilePictureUrl = (url) => {
-    if (!url || url.trim() === "") return "/default-avatar.png"; // fallback avatar path
+    if (!url || url.trim() === "") return "/default-avatar.png";
     if (url.startsWith("http")) return url;
     return `${BACKEND_URL}${url}`;
   };
@@ -57,36 +212,9 @@ const ProfilePage = () => {
     }
   }, []);
 
-  const handleImageUpload = async (file) => {
-    const token = localStorage.getItem("access_token");
-    const formData = new FormData();
-    formData.append("profile_picture", file);
-
-    try {
-      setUploading(true);
-      const response = await axios.patch(
-        `${BACKEND_URL}/api/update-profile-picture/`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      let newUrl = response.data.profile_picture_url;
-      newUrl = normalizeProfilePictureUrl(newUrl);
-
-      const updatedUser = { ...user, profile_picture: newUrl };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      setUser(updatedUser);
-    } catch (error) {
-      console.error("Upload failed:", error);
-      alert("Failed to upload profile picture.");
-    } finally {
-      setUploading(false);
-    }
+  const handleUpdateUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
   };
 
   return (
@@ -102,54 +230,38 @@ const ProfilePage = () => {
             Back
           </button>
 
-          <div className="relative mb-4">
+          <div className="mb-4">
             <img
-              src={user.profile_picture || "/default-avatar.png"}
+              src={user.profile_picture}
               alt="User"
               className="w-24 h-24 rounded-full object-cover border-2 border-white"
               onError={(e) => {
-                console.log("Image failed to load:", user.profile_picture);
                 e.target.onerror = null;
                 e.target.src = "/default-avatar.png";
               }}
             />
-            <label
-              htmlFor="profile-upload"
-              className="absolute bottom-0 right-0 bg-white text-sm p-1 rounded-full cursor-pointer shadow"
-              title="Upload"
-            >
-              <FontAwesomeIcon icon={faUpload} className="text-gray-700" />
-              <input
-                id="profile-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files.length > 0) {
-                    handleImageUpload(e.target.files[0]);
-                  }
-                }}
-              />
-            </label>
           </div>
-
-          {uploading && (
-            <p className="text-sm text-yellow-300 mb-2">Uploading...</p>
-          )}
 
           <h2 className="text-xl font-semibold">{user.name}</h2>
           <p className="text-sm mb-6">{user.email || "No email found"}</p>
 
           <ul className="w-full text-left space-y-4">
-            <li className="flex items-center gap-2 cursor-pointer hover:text-gray-300">
+            <li
+              className={`flex items-center gap-2 cursor-pointer hover:text-gray-300 ${
+                activeView === "personalInfo"
+                  ? "text-gray-300 font-semibold"
+                  : ""
+              }`}
+              onClick={() => setActiveView("personalInfo")}
+            >
               <FontAwesomeIcon icon={faUser} />
               Personal Info
             </li>
 
-            {!showMyExpense ? (
+            {activeView !== "myExpense" ? (
               <li
                 className="flex items-center gap-2 cursor-pointer hover:text-gray-300"
-                onClick={() => setShowMyExpense(true)}
+                onClick={() => setActiveView("myExpense")}
               >
                 <FontAwesomeIcon icon={faFileAlt} />
                 My Expense
@@ -157,14 +269,21 @@ const ProfilePage = () => {
             ) : (
               <li
                 className="flex items-center gap-2 cursor-pointer hover:text-gray-300"
-                onClick={() => setShowMyExpense(false)}
+                onClick={() => setActiveView("dashboard")}
               >
                 <FontAwesomeIcon icon={faArrowLeft} />
-                Back to Dashboard
+                Back
               </li>
             )}
 
-            <li className="flex items-center gap-2 cursor-pointer hover:text-gray-300">
+            <li
+              className="flex items-center gap-2 cursor-pointer hover:text-gray-300"
+              onClick={() => {
+                localStorage.removeItem("user");
+                localStorage.removeItem("access_token");
+                navigate("/login");
+              }}
+            >
               <FontAwesomeIcon icon={faSignOutAlt} />
               Logout
             </li>
@@ -173,12 +292,14 @@ const ProfilePage = () => {
 
         {/* Main Content */}
         <div className="flex-1 ml-6 overflow-auto p-6">
-          {!showMyExpense ? (
+          {activeView === "dashboard" && (
             <>
               {/* Charts */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="bg-white rounded-xl p-4 shadow">
-                  <h2 className="text-lg font-semibold mb-4">Expense Summary</h2>
+                  <h2 className="text-lg font-semibold mb-4">
+                    Expense Summary
+                  </h2>
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
                       <Pie
@@ -201,13 +322,21 @@ const ProfilePage = () => {
                 </div>
 
                 <div className="bg-white rounded-xl p-4 shadow">
-                  <h2 className="text-lg font-semibold mb-4">Category Summary</h2>
+                  <h2 className="text-lg font-semibold mb-4">
+                    Expense Category
+                  </h2>
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
-                      <Pie data={data2} dataKey="value" nameKey="name" outerRadius={70}>
+                      <Pie
+                        data={data2}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={40}
+                        outerRadius={70}
+                      >
                         {data2.map((entry, index) => (
                           <Cell
-                            key={`cell2-${index}`}
+                            key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
                           />
                         ))}
@@ -218,16 +347,31 @@ const ProfilePage = () => {
                 </div>
               </div>
 
-              {/* Expense Table */}
-              <div
-                className="bg-white rounded-xl p-4 shadow overflow-auto"
-                style={{ maxHeight: "40vh" }}
-              >
-                <Table />
-              </div>
+              {/* Data Table */}
+              <Table />
             </>
-          ) : (
-            <Mydata />
+          )}
+
+          {activeView === "personalInfo" && (
+            <PersonalInfo
+              user={user}
+              onUpdateUser={handleUpdateUser}
+              setActiveView={setActiveView}
+            />
+          )}
+
+          {activeView === "myExpense" && (
+            <div>
+              <button
+                onClick={() => setActiveView("dashboard")}
+                className="mb-4 text-blue-600 hover:underline flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faArrowLeft} />
+                Back
+              </button>
+              {/* MyExpense component should go here */}
+              <Mydata />
+            </div>
           )}
         </div>
       </div>

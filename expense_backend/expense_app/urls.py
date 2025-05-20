@@ -25,6 +25,11 @@ urlpatterns = [
     path('expenses/', views.expense_list_create, name='expense-list-create'),
     path('expenses/<int:pk>/', views.expense_detail, name='expense-detail'),
     path('expenses/mydata/', views.my_expenses, name='my_expenses'),
+    
+    #profile
+    path('update-profile-picture/', views.update_profile_picture, name='update-profile-picture'),
+    path('profile/', views.user_profile, name='user-profile'),  # 👈 add this line
+
 
     # Orders
     path('orders/', views.order_list_create, name='order-list-create'),
