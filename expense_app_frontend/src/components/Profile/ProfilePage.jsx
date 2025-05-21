@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Table from "./Table";
-import Mydata from "./Mydata";
+import Table from "./Table"; // Your data table component
+import Mydata from "./Mydata"; // Your "My Expense" component
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -17,7 +17,7 @@ import {
 const COLORS = ["#0E4351", "#971C8A", "#6B4BB0"];
 
 const data1 = [
-  { name: "Total", value: 1779 },
+  { name: "Total", value: 2203 },
   { name: "Refunded", value: 650 },
   { name: "Pending", value: 1170 },
 ];
@@ -75,14 +75,49 @@ const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
   };
 
   const handleSave = async () => {
-    // Simulated save - replace with API call if needed
-    onUpdateUser({
-      ...user,
-      name: formData.name,
-      email: formData.email,
-      profile_picture: formData.profile_picture,
-    });
-    setIsEditing(false);
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("email", formData.email);
+      if (formData.profile_picture_file) {
+        formDataToSend.append("profile_picture", formData.profile_picture_file);
+      }
+      const response = await fetch(
+        `${BACKEND_URL}/api/update-profile-picture/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access")}`,
+
+          },
+          body: formDataToSend,
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to update profile");
+
+      const updatedUser = await response.json();
+
+      onUpdateUser({
+        ...user,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        profile_picture: normalizeProfilePictureUrl(
+          updatedUser.profile_picture
+        ),
+      });
+
+      setIsEditing(false);
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  // helper function used here too
+  const normalizeProfilePictureUrl = (url) => {
+    if (!url || url.trim() === "") return "/default-avatar.png";
+    if (url.startsWith("http")) return url;
+    return `${BACKEND_URL}${url}`;
   };
 
   return (
@@ -95,7 +130,7 @@ const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
         Back
       </button>
 
-      <h1 className="text-2xl font-semibold and italic mb-4">Personal Info</h1>
+      <h1 className="text-2xl font-semibold italic mb-4">Personal Info</h1>
 
       <div className="mb-4 flex flex-col items-center">
         <img
@@ -205,7 +240,7 @@ const ProfilePage = () => {
     profile_picture: "/default-avatar.png",
   });
 
-  // activeView: 'dashboard', 'personalInfo', 'myExpense'
+  // activeView: 'personalInfo', 'myExpense'
   const [activeView, setActiveView] = useState("dashboard");
 
   const normalizeProfilePictureUrl = (url) => {
@@ -229,6 +264,10 @@ const ProfilePage = () => {
     setUser(updatedUser);
     localStorage.setItem("user", JSON.stringify(updatedUser));
   };
+
+  // Calculate total for data2 for legend %
+  const totalChart1 = data2.reduce((acc, item) => acc + item.value, 0);
+  const chartData1 = data2;
 
   return (
     <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50 p-4">
@@ -255,113 +294,135 @@ const ProfilePage = () => {
             />
           </div>
 
-          <h2 className="text-xl font-semibold">{user.name}</h2>
-          <p className="text-sm mb-6">{user.email || "No email found"}</p>
+          <h2 className="text-xl font-bold mb-8">{user.name}</h2>
 
-          <ul className="w-full text-left space-y-4">
-            <li
-              className={`flex items-center gap-2 cursor-pointer hover:text-gray-300 ${
-                activeView === "personalInfo"
-                  ? "text-gray-300 font-semibold"
-                  : ""
-              }`}
-              onClick={() => setActiveView("personalInfo")}
-            >
-              <FontAwesomeIcon icon={faUser} />
-              Personal Info
-            </li>
+          <button
+            onClick={() => setActiveView("personalInfo")}
+            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded ${
+              activeView === "personalInfo"
+                ? "bg-[#1c6094]"
+                : "hover:bg-[#1c6094]/80"
+            } transition-colors`}
+          >
+            <FontAwesomeIcon icon={faUser} />
+            <span>Personal Info</span>
+          </button>
 
-            {activeView !== "myExpense" ? (
-              <li
-                className="flex items-center gap-2 cursor-pointer hover:text-gray-300"
-                onClick={() => setActiveView("myExpense")}
-              >
-                <FontAwesomeIcon icon={faFileAlt} />
-                My Expense
-              </li>
-            ) : (
-              <li
-                className="flex items-center gap-2 cursor-pointer hover:text-gray-300"
-                onClick={() => setActiveView("dashboard")}
-              >
-                <FontAwesomeIcon icon={faArrowLeft} />
-                Back
-              </li>
-            )}
+          <button
+            onClick={() => setActiveView("myExpense")}
+            className={`flex items-center gap-2 mb-4 px-4 py-2 rounded ${
+              activeView === "myExpense"
+                ? "bg-[#1c6094]"
+                : "hover:bg-[#1c6094]/80"
+            } transition-colors`}
+          >
+            <FontAwesomeIcon icon={faFileAlt} />
+            <span>My Expense</span>
+          </button>
 
-            <li
-              className="flex items-center gap-2 cursor-pointer hover:text-gray-300"
-              onClick={() => {
-                localStorage.removeItem("user");
-                localStorage.removeItem("access_token");
-                navigate("/login");
-              }}
-            >
-              <FontAwesomeIcon icon={faSignOutAlt} />
-              Logout
-            </li>
-          </ul>
+          <button
+            onClick={() => {
+              localStorage.clear();
+              navigate("/login");
+            }}
+            className="mt-auto flex items-center gap-2 px-4 py-2 rounded  transition-colors"
+          >
+            <FontAwesomeIcon icon={faSignOutAlt} />
+            Logout
+          </button>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 ml-6 overflow-auto p-6">
+        {/* Main content */}
+        <div className="flex-1 p-8 overflow-y-auto">
           {activeView === "dashboard" && (
             <>
-              {/* Charts */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="bg-white rounded-xl p-4 shadow">
-                  <h2 className="text-lg font-semibold mb-4">
-                    Expense Summary
-                  </h2>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={data1}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={40}
-                        outerRadius={70}
-                      >
-                        {data1.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+              <h1 className="text-4xl font-semibold italic mb-4">Dashboard</h1>
+              <div className="flex flex-col gap-8">
+                <div className="flex gap-12 flex-wrap justify-center">
+                  <div className="bg-white p-6 rounded-3xl w-64 shadow-md">
+                    <h2 className="mb-4 font-semibold text-lg">Expense Type</h2>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={data1}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={90}
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          {data1.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Legend
+                          verticalAlign="bottom"
+                          formatter={(value) => {
+                            const item = data1.find((i) => i.name === value);
+                            if (!item) return value;
+                            const percent = (
+                              (item.value /
+                                data1.reduce((acc, i) => acc + i.value, 0)) *
+                              100
+                            ).toFixed(0);
+                            return `${value} (${percent}%)`;
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-3xl w-64 shadow-md">
+                    <h2 className="mb-4 font-semibold text-lg">
+                      Expense Category
+                    </h2>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={chartData1}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={90}
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          {chartData1.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Legend
+                          verticalAlign="bottom"
+                          formatter={(value) => {
+                            const item = chartData1.find(
+                              (i) => i.name === value
+                            );
+                            if (!item) return value;
+                            const percent = (
+                              (item.value / totalChart1) *
+                              100
+                            ).toFixed(0);
+                            return `${value} (${percent}%)`;
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-4 shadow">
-                  <h2 className="text-lg font-semibold mb-4">
-                    Expense Category
-                  </h2>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={data2}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={40}
-                        outerRadius={70}
-                      >
-                        {data2.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+                <Table />
               </div>
-
-              {/* Data Table */}
-              <Table />
             </>
           )}
 
@@ -373,19 +434,7 @@ const ProfilePage = () => {
             />
           )}
 
-          {activeView === "myExpense" && (
-            <div>
-              <button
-                onClick={() => setActiveView("dashboard")}
-                className="mb-4 text-blue-600 hover:underline flex items-center gap-2"
-              >
-                <FontAwesomeIcon icon={faArrowLeft} />
-                Back
-              </button>
-              {/* MyExpense component should go here */}
-              <Mydata />
-            </div>
-          )}
+          {activeView === "myExpense" && <Mydata />}
         </div>
       </div>
     </div>

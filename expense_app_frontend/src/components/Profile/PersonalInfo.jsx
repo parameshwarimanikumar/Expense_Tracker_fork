@@ -1,65 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { FaPen } from 'react-icons/fa'; // Pencil icon
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { FaPen } from "react-icons/fa"; // Pencil icon
 
 const PersonalInfo = () => {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    first_name: '',
-    email: '',
-    password: '',
+    first_name: "",
+    email: "",
+    password: "",
     profilePic: null,
-    previewPic: ''
+    previewPic: "",
   });
 
   useEffect(() => {
-    axios.get('/api/profile/', {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('access')}`
-      }
-    }).then(res => {
-      const { first_name, email, profile_picture } = res.data;
-      setFormData(prev => ({
-        ...prev,
-        first_name,
-        email,
-        previewPic: profile_picture
-      }));
-    });
+    axios
+      .get("/api/profile/", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access")}`,
+        },
+      })
+      .then((res) => {
+        const { first_name, email, profile_picture } = res.data;
+        setFormData((prev) => ({
+          ...prev,
+          first_name,
+          email,
+          previewPic: profile_picture,
+        }));
+      });
   }, []);
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = e => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       profilePic: file,
-      previewPic: URL.createObjectURL(file)
+      previewPic: URL.createObjectURL(file),
     }));
   };
 
   const handleSave = async () => {
     const data = new FormData();
-    data.append('first_name', formData.first_name);
-    data.append('email', formData.email);
-    if (formData.password) data.append('password', formData.password);
-    if (formData.profilePic) data.append('profile_picture', formData.profilePic);
+    data.append("first_name", formData.first_name);
+    data.append("email", formData.email);
+    if (formData.password) data.append("password", formData.password);
+    if (formData.profilePic)
+      data.append("profile_picture", formData.profilePic);
 
     try {
-      await axios.put('/api/profile/', data, {
+      await axios.put("/api/profile/", data, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access')}`,
-          'Content-Type': 'multipart/form-data'
-        }
+          Authorization: `Bearer ${localStorage.getItem("access")}`,
+          "Content-Type": "multipart/form-data",
+        },
       });
-      alert('Profile updated successfully');
+      alert("Profile updated successfully");
       setEditMode(false);
     } catch {
-      alert('Error updating profile');
+      alert("Error updating profile");
     }
   };
 

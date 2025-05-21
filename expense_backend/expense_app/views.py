@@ -46,19 +46,24 @@ def register_user(request):
 @parser_classes([MultiPartParser, FormParser])
 def update_profile_picture(request):
     user = request.user
-    if 'profile_picture' not in request.FILES:
-        return Response({'error': 'No file uploaded.'}, status=400)
 
-    user.profile_picture = request.FILES['profile_picture']
+    if 'profile_picture' in request.FILES:
+        user.profile_picture = request.FILES['profile_picture']
+
+    # Optional: handle name and email too
+    if 'name' in request.data:
+        user.first_name = request.data['name']
+    if 'email' in request.data:
+        user.email = request.data['email']
+
     user.save()
 
-    # Create full URL for profile picture
-    full_url = request.build_absolute_uri(user.profile_picture.url)
-
     return Response({
-        'message': 'Profile picture updated successfully.',
-        'profile_picture_url': full_url
+        'name': user.first_name,
+        'email': user.email,
+        'profile_picture': request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else '',
     })
+
 
 
 @api_view(['GET', 'PUT'])
