@@ -16,11 +16,28 @@ import {
 
 const COLORS = ["#0E4351", "#971C8A", "#6B4BB0"];
 
-const data1 = [
-  { name: "Total", value: 2203 },
-  { name: "Refunded", value: 650 },
-  { name: "Pending", value: 1170 },
-];
+const calculateSummary = (expenses) => {
+  let total = 0;
+  let refunded = 0;
+  let pending = 0;
+
+  expenses.forEach((expense) => {
+    const amount = Number(expense.amount);
+    total += amount;
+
+    if (expense.is_refunded) {
+      refunded += amount;
+    } else if (!expense.is_verified) {
+      pending += amount;
+    }
+  });
+
+  return [
+    { name: "Total", value: total },
+    { name: "Refunded", value: refunded },
+    { name: "Pending", value: pending },
+  ];
+};
 
 const data2 = [
   { name: "Total", value: 2000 },
@@ -88,7 +105,6 @@ const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access")}`,
-
           },
           body: formDataToSend,
         }
@@ -242,6 +258,20 @@ const ProfilePage = () => {
 
   // activeView: 'personalInfo', 'myExpense'
   const [activeView, setActiveView] = useState("dashboard");
+  const [expenses, setExpenses] = useState([]);
+
+  useEffect(() => {
+    // Fetch your expenses here
+    fetch("http://localhost:8000/api/expenses", {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access")}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setExpenses(data));
+  }, []);
+
+  const pieChartData = calculateSummary(expenses);
 
   const normalizeProfilePictureUrl = (url) => {
     if (!url || url.trim() === "") return "/default-avatar.png";
@@ -339,50 +369,38 @@ const ProfilePage = () => {
               <h1 className="text-4xl font-semibold italic mb-4">Dashboard</h1>
               <div className="flex flex-col gap-8">
                 <div className="flex gap-12 flex-wrap justify-center">
-                  <div className="bg-white p-6 rounded-3xl w-64 shadow-md">
+                  <div className="bg-white p-6 rounded-3xl w-150 shadow-md">
                     <h2 className="mb-4 font-semibold text-lg">Expense Type</h2>
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie
-                          data={data1}
+                          data={pieChartData}
                           dataKey="value"
                           nameKey="name"
                           cx="50%"
                           cy="50%"
-                          outerRadius={90}
-                          label={({ name, percent }) =>
-                            `${name} ${(percent * 100).toFixed(0)}%`
+                          outerRadius={100}
+                          label={({ name, value, percent }) =>
+                            `${name} ${value} (${(percent * 100).toFixed(0)}%)`
                           }
                         >
-                          {data1.map((entry, index) => (
+                          {pieChartData.map((entry, index) => (
                             <Cell
                               key={`cell-${index}`}
                               fill={COLORS[index % COLORS.length]}
                             />
                           ))}
                         </Pie>
-                        <Legend
-                          verticalAlign="bottom"
-                          formatter={(value) => {
-                            const item = data1.find((i) => i.name === value);
-                            if (!item) return value;
-                            const percent = (
-                              (item.value /
-                                data1.reduce((acc, i) => acc + i.value, 0)) *
-                              100
-                            ).toFixed(0);
-                            return `${value} (${percent}%)`;
-                          }}
-                        />
+                        <Legend />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="bg-white p-6 rounded-3xl w-64 shadow-md">
+                  <div className="bg-white p-6 rounded-3xl w-150 shadow-md">
                     <h2 className="mb-4 font-semibold text-lg">
                       Expense Category
                     </h2>
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie
                           data={chartData1}
@@ -391,8 +409,8 @@ const ProfilePage = () => {
                           cx="50%"
                           cy="50%"
                           outerRadius={90}
-                          label={({ name, percent }) =>
-                            `${name} ${(percent * 100).toFixed(0)}%`
+                          label={({ name, value, percent }) =>
+                            `${name} ${value} (${(percent * 100).toFixed(0)}%)`
                           }
                         >
                           {chartData1.map((entry, index) => (
@@ -433,8 +451,18 @@ const ProfilePage = () => {
               setActiveView={setActiveView}
             />
           )}
-
-          {activeView === "myExpense" && <Mydata />}
+          {activeView === "myExpense" && (
+            <>
+              <button
+                onClick={() => setActiveView("dashboard")}
+                className="mb-4 text-blue-600 hover:underline flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faArrowLeft} />
+                Back
+              </button>
+              <Mydata />
+            </>
+          )}
         </div>
       </div>
     </div>

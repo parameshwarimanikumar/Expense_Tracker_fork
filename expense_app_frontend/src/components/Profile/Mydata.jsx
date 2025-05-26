@@ -112,6 +112,7 @@ const Mydata = () => {
 
   return (
     <div className="bg-white rounded-xl p-4 shadow">
+      
       <h2 className="text-center font-bold mb-4 text-xl">My Expenses</h2>
 
       {loading ? (
