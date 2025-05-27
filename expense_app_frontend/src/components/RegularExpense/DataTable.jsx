@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { faFilePdf, faFilter } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useState, useEffect, useCallback } from "react";
+import { faFilePdf, faFilter } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { getGroupedOrders, getAvailableDates } from "../../api_service/api";
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { jsPDF } from "jspdf";
 
 const DataTable = () => {
@@ -24,34 +24,44 @@ const DataTable = () => {
   const PAGE_SIZE = 10;
 
   // Fetch data with filters and pagination
-  const fetchData = useCallback(async (page = 1) => {
-    setLoading(true);
-    try {
-      const apiFilters = {};
-      if (filters.start_date) apiFilters.start_date = filters.start_date.toISOString().split('T')[0];
-      if (filters.end_date) apiFilters.end_date = filters.end_date.toISOString().split('T')[0];
-      if (filters.specific_date) apiFilters.specific_date = filters.specific_date.toISOString().split('T')[0];
-      if (filters.month) apiFilters.month = filters.month;
+  const fetchData = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      try {
+        const apiFilters = {};
+        if (filters.start_date)
+          apiFilters.start_date = filters.start_date
+            .toISOString()
+            .split("T")[0];
+        if (filters.end_date)
+          apiFilters.end_date = filters.end_date.toISOString().split("T")[0];
+        if (filters.specific_date)
+          apiFilters.specific_date = filters.specific_date
+            .toISOString()
+            .split("T")[0];
+        if (filters.month) apiFilters.month = filters.month;
 
-      const data = await getGroupedOrders(page, PAGE_SIZE, apiFilters);
+        const data = await getGroupedOrders(page, PAGE_SIZE, apiFilters);
 
-      setGroupedItems(data.results);
-      setTotalPrice(data.total_price);
-      setTotalPages(data.total_pages);
-      setCurrentPage(page);
+        setGroupedItems(data.results);
+        setTotalPrice(data.total_price);
+        setTotalPages(data.total_pages);
+        setCurrentPage(page);
 
-      // Fetch available dates once for filters dropdowns, etc.
-      if (availableDates.length === 0) {
-        const dates = await getAvailableDates();
-        setAvailableDates(dates);
+        // Fetch available dates once for filters dropdowns, etc.
+        if (availableDates.length === 0) {
+          const dates = await getAvailableDates();
+          setAvailableDates(dates);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        alert("Failed to fetch grouped orders. Please try again.");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      alert("Failed to fetch grouped orders. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, availableDates.length]);
+    },
+    [filters, availableDates.length]
+  );
 
   useEffect(() => {
     fetchData();
@@ -70,8 +80,8 @@ const DataTable = () => {
   };
 
   const formatDate = (dateString) => {
-    const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-GB', options);
+    const options = { day: "2-digit", month: "2-digit", year: "numeric" };
+    return new Date(dateString).toLocaleDateString("en-GB", options);
   };
 
   // PDF download handler using jsPDF
@@ -120,7 +130,11 @@ const DataTable = () => {
       });
 
       doc.setFontSize(12);
-      doc.text(`Total for ${formatDate(date)}: ₹${totalPerDate.toFixed(2)}`, 10, y);
+      doc.text(
+        `Total for ${formatDate(date)}: ₹${totalPerDate.toFixed(2)}`,
+        10,
+        y
+      );
       y += 10;
     });
 
@@ -131,7 +145,9 @@ const DataTable = () => {
     <div className="p-4 md:p-6 bg-white rounded-lg min-h-screen relative">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <h2 className="text-lg md:text-xl font-bold text-[#124451]">
-          {loading ? 'Loading...' : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
+          {loading
+            ? "Loading..."
+            : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
         </h2>
         <div className="flex gap-2 w-full md:w-auto">
           <button
@@ -150,7 +166,14 @@ const DataTable = () => {
           </button>
           <button
             className="bg-gray-300 text-[#124451] px-3 py-1 text-sm md:text-base md:px-4 rounded-full"
-            onClick={() => handleFilterSubmit({ start_date: null, end_date: null, specific_date: null, month: null })}
+            onClick={() =>
+              handleFilterSubmit({
+                start_date: null,
+                end_date: null,
+                specific_date: null,
+                month: null,
+              })
+            }
           >
             Clear Filters
           </button>
@@ -177,22 +200,41 @@ const DataTable = () => {
 
             {Object.keys(groupedItems).map((date, idx) => {
               const items = groupedItems[date];
-              const totalPerRow = items.reduce((sum, item) => sum + (item.count * item.price), 0);
+              const totalPerRow = items.reduce(
+                (sum, item) => sum + item.count * item.price,
+                0
+              );
 
               return (
-                <div key={date} className={`${idx % 2 === 0 ? "bg-gray-100" : "bg-white"} p-4 grid grid-cols-6`}>
-                  <div className="row-span-full flex items-center font-semibold">{formatDate(date)}</div>
+                <div
+                  key={date}
+                  className={`${
+                    idx % 2 === 0 ? "bg-gray-100" : "bg-white"
+                  } p-4 grid grid-cols-6`}
+                >
+                  <div className="row-span-full flex items-center font-semibold">
+                    {formatDate(date)}
+                  </div>
                   <div className="col-span-4">
                     {items.map((item, index) => (
-                      <div key={index} className="grid grid-cols-4 text-sm text-gray-800 py-1">
+                      <div
+                        key={index}
+                        className="grid grid-cols-4 text-sm text-gray-800 py-1"
+                      >
                         <div>{item.item_name}</div>
                         <div className="text-center">{item.count}</div>
-                        <div className="text-center">₹{item.price.toFixed(2)}</div>
-                        <div className="text-center">₹{(item.count * item.price).toFixed(2)}</div>
+                        <div className="text-center">
+                          ₹{item.price.toFixed(2)}
+                        </div>
+                        <div className="text-center">
+                          ₹{(item.count * item.price).toFixed(2)}
+                        </div>
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center justify-center font-semibold">₹ {totalPerRow.toFixed(2)}</div>
+                  <div className="flex items-center justify-center font-semibold">
+                    ₹ {totalPerRow.toFixed(2)}
+                  </div>
                 </div>
               );
             })}
@@ -201,17 +243,32 @@ const DataTable = () => {
           <div className="md:hidden space-y-4">
             {Object.keys(groupedItems).map((date, idx) => {
               const items = groupedItems[date];
-              const totalPerRow = items.reduce((sum, item) => sum + (item.count * item.price), 0);
+              const totalPerRow = items.reduce(
+                (sum, item) => sum + item.count * item.price,
+                0
+              );
 
               return (
-                <div key={date} className={`${idx % 2 === 0 ? "bg-gray-100" : "bg-white"} p-4 rounded-lg shadow-sm`}>
-                  <div className="font-semibold text-[#124451] mb-3">{formatDate(date)}</div>
+                <div
+                  key={date}
+                  className={`${
+                    idx % 2 === 0 ? "bg-gray-100" : "bg-white"
+                  } p-4 rounded-lg shadow-sm`}
+                >
+                  <div className="font-semibold text-[#124451] mb-3">
+                    {formatDate(date)}
+                  </div>
                   {items.map((item, index) => (
-                    <div key={index} className="flex justify-between mb-2 text-sm">
+                    <div
+                      key={index}
+                      className="flex justify-between mb-2 text-sm"
+                    >
                       <span>{item.item_name}</span>
                       <span>Count: {item.count}</span>
                       <span>₹{item.price.toFixed(2)}</span>
-                      <span>Total: ₹{(item.count * item.price).toFixed(2)}</span>
+                      <span>
+                        Total: ₹{(item.count * item.price).toFixed(2)}
+                      </span>
                     </div>
                   ))}
                   <div className="font-semibold text-center mt-2 border-t pt-2">
@@ -234,7 +291,9 @@ const DataTable = () => {
       )}
 
       {!loading && Object.keys(groupedItems).length === 0 && (
-        <div className="text-center text-gray-500 mt-12">No grouped orders found.</div>
+        <div className="text-center text-gray-500 mt-12">
+          No grouped orders found.
+        </div>
       )}
 
       {/* Pagination Controls */}
@@ -266,111 +325,92 @@ const DataTable = () => {
 const FilterModal = ({ onClose, onSubmit, availableDates, filters }) => {
   const [startDate, setStartDate] = useState(filters.start_date);
   const [endDate, setEndDate] = useState(filters.end_date);
-  const [specificDate, setSpecificDate] = useState(filters.specific_date);
   const [month, setMonth] = useState(filters.month);
 
   // Generate month options from availableDates
   const uniqueMonths = Array.from(
     new Set(
       availableDates.map((dateStr) => {
-        const dt = new Date(dateStr);
-        return dt.toISOString().slice(0, 7); // YYYY-MM
+        const date = new Date(dateStr);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}`;
       })
     )
   );
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = () => {
     onSubmit({
       start_date: startDate,
       end_date: endDate,
-      specific_date: specificDate,
-      month: month,
+      month,
     });
   };
 
   return (
-    <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-start pt-10 md:pt-20 z-50">
-          <div className="bg-white p-6 rounded-lg w-[400px]">
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 font-bold text-xl"
-          aria-label="Close filter modal"
-        >
-          &times;
-        </button>
-        <h3 className="text-lg font-semibold mb-4 text-[#124451]">Filter Orders</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block mb-1 font-medium">Start Date</label>
-            <DatePicker
-              selected={startDate}
-              onChange={(date) => setStartDate(date)}
-              dateFormat="dd/MM/yyyy"
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              placeholderText="Select start date"
-              maxDate={endDate || null}
-              isClearable
-            />
-          </div>
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-bold text-[#124451] mb-4">Filter Orders</h2>
 
-          <div>
-            <label className="block mb-1 font-medium">End Date</label>
-            <DatePicker
-              selected={endDate}
-              onChange={(date) => setEndDate(date)}
-              dateFormat="dd/MM/yyyy"
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              placeholderText="Select end date"
-              minDate={startDate || null}
-              isClearable
-            />
-          </div>
+        <div className="mb-4">
+          <label className="block mb-1 text-sm font-semibold">Start Date</label>
+          <DatePicker
+            selected={startDate}
+            onChange={(date) => setStartDate(date)}
+            className="w-full p-2 border rounded"
+            placeholderText="Select start date"
+            dateFormat="yyyy-MM-dd"
+            isClearable
+          />
+        </div>
 
-          <div>
-            <label className="block mb-1 font-medium">Specific Date</label>
-            <DatePicker
-              selected={specificDate}
-              onChange={(date) => setSpecificDate(date)}
-              dateFormat="dd/MM/yyyy"
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              placeholderText="Select specific date"
-              isClearable
-            />
-          </div>
+        <div className="mb-4">
+          <label className="block mb-1 text-sm font-semibold">End Date</label>
+          <DatePicker
+            selected={endDate}
+            onChange={(date) => setEndDate(date)}
+            className="w-full p-2 border rounded"
+            placeholderText="Select end date"
+            dateFormat="yyyy-MM-dd"
+            isClearable
+          />
+        </div>
 
-          <div>
-            <label className="block mb-1 font-medium">Month</label>
-            <select
-              value={month || ''}
-              onChange={(e) => setMonth(e.target.value || null)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-            >
-              <option value="">-- Select month --</option>
-              {uniqueMonths.map((m) => (
-                <option key={m} value={m}>
-                  {new Date(m + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}
-                </option>
-              ))}
-            </select>
-          </div>
 
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="bg-[#124451] text-white px-4 py-2 rounded hover:bg-[#0d3436]"
-            >
-              Apply Filters
-            </button>
-          </div>
-        </form>
+        <div className="mb-4">
+          <label className="block mb-1 text-sm font-semibold">Month</label>
+          <select
+            className="w-full p-2 border rounded"
+            value={month || ""}
+            onChange={(e) => setMonth(e.target.value || null)}
+          >
+            <option value="">Select Month</option>
+            {uniqueMonths.map((m) => (
+              <option key={m} value={m}>
+                {new Date(`${m}-01`).toLocaleString("default", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            className="bg-gray-300 text-[#124451] px-4 py-2 rounded"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            className="bg-[#124451] text-white px-4 py-2 rounded"
+            onClick={handleSubmit}
+          >
+            Apply Filter
+          </button>
+        </div>
       </div>
     </div>
   );

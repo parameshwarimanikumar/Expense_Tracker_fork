@@ -7,6 +7,7 @@ from django.db.models.functions import TruncDate
 
 from django.db import transaction as db_transaction
 from django.contrib.auth import logout
+from django.db.models import Sum, F, FloatField
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -895,46 +896,52 @@ def delete_orders_by_date_user(request):
 
 
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def order_items_grouped_by_date(request):
-    # Get base queryset
-    if request.user.role and request.user.role.role_name.lower() == 'admin':
+    user = request.user
+    is_admin = user.role and user.role.role_name.lower() == 'admin'
+
+    if is_admin:
         order_items = OrderItem.objects.all()
     else:
-        order_items = OrderItem.objects.filter(order__created_user=request.user)
+        order_items = OrderItem.objects.filter(order__created_user=user)
     
-    # Apply filters
+    # Filters
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
-    specific_date = request.query_params.get('specific_date')
     month = request.query_params.get('month')
     
     if start_date:
         order_items = order_items.filter(added_date__gte=start_date)
     if end_date:
         order_items = order_items.filter(added_date__lte=end_date)
-    if specific_date:
-        order_items = order_items.filter(added_date__date=specific_date)
+    
+
     if month:
-        order_items = order_items.filter(added_date__year=month[:4], added_date__month=month[5:])
+        try:
+            year = int(month[:4])
+            month_num = int(month[5:])
+            order_items = order_items.filter(added_date__year=year, added_date__month=month_num)
+        except (ValueError, IndexError):
+            pass
     
-    # Pagination
-    page = int(request.query_params.get('page', 1))
-    page_size = int(request.query_params.get('page_size', 10))
+    # Pagination params with safe fallback
+    try:
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+    except ValueError:
+        page, page_size = 1, 10
     
-    # Get distinct dates for pagination
+    # Get distinct dates (descending)
     dates = order_items.dates('added_date', 'day').order_by('-added_date')
     total_count = dates.count()
     total_pages = (total_count + page_size - 1) // page_size
     
-    # Apply pagination to dates
     start = (page - 1) * page_size
     end = start + page_size
     paginated_dates = dates[start:end]
     
-    # Group items by date
     grouped_data = {}
     grand_total = 0
     
@@ -970,12 +977,16 @@ def order_items_grouped_by_date(request):
         'current_page': page
     })
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def available_dates(request):
-    if request.user.role and request.user.role.role_name.lower() == 'admin':
+    user = request.user
+    is_admin = user.role and user.role.role_name.lower() == 'admin'
+
+    if is_admin:
         dates = OrderItem.objects.dates('added_date', 'day').order_by('-added_date')
     else:
-        dates = OrderItem.objects.filter(order__created_user=request.user).dates('added_date', 'day').order_by('-added_date')
-    
+        dates = OrderItem.objects.filter(order__created_user=user).dates('added_date', 'day').order_by('-added_date')
+
     return Response([date.strftime('%Y-%m-%d') for date in dates])
