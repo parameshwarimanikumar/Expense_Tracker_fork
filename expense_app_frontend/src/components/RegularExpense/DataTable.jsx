@@ -4,8 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getGroupedOrders, getAvailableDates } from "../../api_service/api";
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-
-
+import { jsPDF } from "jspdf";
 
 const DataTable = () => {
   const [groupedItems, setGroupedItems] = useState({});
@@ -24,7 +23,7 @@ const DataTable = () => {
 
   const PAGE_SIZE = 10;
 
-  // Use `useCallback` to memoize the fetchData function
+  // Fetch data with filters and pagination
   const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
     try {
@@ -41,13 +40,14 @@ const DataTable = () => {
       setTotalPages(data.total_pages);
       setCurrentPage(page);
 
-      // Fetch available dates if not already loaded
+      // Fetch available dates once for filters dropdowns, etc.
       if (availableDates.length === 0) {
         const dates = await getAvailableDates();
         setAvailableDates(dates);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
+      alert("Failed to fetch grouped orders. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -55,7 +55,7 @@ const DataTable = () => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]); 
+  }, [fetchData]);
 
   const handleFilterSubmit = (newFilters) => {
     setFilters(newFilters);
@@ -74,14 +74,70 @@ const DataTable = () => {
     return new Date(dateString).toLocaleDateString('en-GB', options);
   };
 
+  // PDF download handler using jsPDF
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    let y = 10;
+
+    doc.setFontSize(16);
+    doc.text("Grouped Orders Report", 10, y);
+    y += 10;
+    doc.setFontSize(12);
+    doc.text(`Total Price: ₹${totalPrice.toFixed(2)}`, 10, y);
+    y += 10;
+
+    Object.keys(groupedItems).forEach((date) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 10;
+      }
+      doc.setFontSize(14);
+      doc.text(`Date: ${formatDate(date)}`, 10, y);
+      y += 8;
+
+      doc.setFontSize(11);
+      doc.text("Item Name", 10, y);
+      doc.text("Count", 80, y);
+      doc.text("Price/item", 110, y);
+      doc.text("Total Price", 150, y);
+      y += 6;
+
+      const items = groupedItems[date];
+      let totalPerDate = 0;
+
+      items.forEach((item) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 10;
+        }
+        doc.text(item.item_name, 10, y);
+        doc.text(String(item.count), 80, y);
+        doc.text(`₹${item.price.toFixed(2)}`, 110, y);
+        const totalItemPrice = item.count * item.price;
+        doc.text(`₹${totalItemPrice.toFixed(2)}`, 150, y);
+        totalPerDate += totalItemPrice;
+        y += 6;
+      });
+
+      doc.setFontSize(12);
+      doc.text(`Total for ${formatDate(date)}: ₹${totalPerDate.toFixed(2)}`, 10, y);
+      y += 10;
+    });
+
+    doc.save("orders_report.pdf");
+  };
+
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg min-h-screen relative">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <h2 className="text-lg md:text-xl font-bold text-[#124451]">
-          {loading ? 'Loading...' : `Total Price: ₹ ${totalPrice.toFixed(2)}`}
+          {loading ? 'Loading...' : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
         </h2>
         <div className="flex gap-2 w-full md:w-auto">
-          <button className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full flex items-center gap-1">
+          <button
+            className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full flex items-center gap-1"
+            onClick={downloadPDF}
+          >
             <FontAwesomeIcon icon={faFilePdf} className="text-red-500" />
             <span className="hidden sm:inline">Download PDF</span>
           </button>
@@ -92,6 +148,12 @@ const DataTable = () => {
             <FontAwesomeIcon icon={faFilter} />
             <span className="hidden sm:inline">Filter</span>
           </button>
+          <button
+            className="bg-gray-300 text-[#124451] px-3 py-1 text-sm md:text-base md:px-4 rounded-full"
+            onClick={() => handleFilterSubmit({ start_date: null, end_date: null, specific_date: null, month: null })}
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
 
@@ -101,7 +163,6 @@ const DataTable = () => {
         </div>
       )}
 
-      {/* Table View */}
       {!loading && Object.keys(groupedItems).length > 0 && (
         <>
           <div className="hidden md:block">
@@ -136,6 +197,7 @@ const DataTable = () => {
               );
             })}
           </div>
+
           <div className="md:hidden space-y-4">
             {Object.keys(groupedItems).map((date, idx) => {
               const items = groupedItems[date];
@@ -145,21 +207,15 @@ const DataTable = () => {
                 <div key={date} className={`${idx % 2 === 0 ? "bg-gray-100" : "bg-white"} p-4 rounded-lg shadow-sm`}>
                   <div className="font-semibold text-[#124451] mb-3">{formatDate(date)}</div>
                   {items.map((item, index) => (
-                    <div key={index} className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-gray-800 py-2 border-b last:border-b-0">
-                      <div className="font-medium">{item.item_name}</div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Count:</span> <span>{item.count}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Price:</span> <span>₹{item.price.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between col-span-2">
-                        <span className="text-gray-500">Total:</span> <span>₹{(item.count * item.price).toFixed(2)}</span>
-                      </div>
+                    <div key={index} className="flex justify-between mb-2 text-sm">
+                      <span>{item.item_name}</span>
+                      <span>Count: {item.count}</span>
+                      <span>₹{item.price.toFixed(2)}</span>
+                      <span>Total: ₹{(item.count * item.price).toFixed(2)}</span>
                     </div>
                   ))}
-                  <div className="mt-3 pt-2 border-t font-semibold flex justify-between">
-                    <span>Total:</span> <span>₹{totalPerRow.toFixed(2)}</span>
+                  <div className="font-semibold text-center mt-2 border-t pt-2">
+                    Total Price: ₹ {totalPerRow.toFixed(2)}
                   </div>
                 </div>
               );
@@ -168,82 +224,154 @@ const DataTable = () => {
         </>
       )}
 
-      {/* No Data Found */}
-      {!loading && Object.keys(groupedItems).length === 0 && (
-        <div className="text-center py-10 text-gray-500">
-          No orders found matching your filters
-        </div>
-      )}
-
-      {/* Pagination */}
-      {!loading && totalPages > 1 && (
-        <div className="flex justify-between mt-4">
-          <div>
-            {currentPage > 1 && (
-              <button className="px-3 py-1 border rounded text-gray-700" onClick={() => handlePageChange(currentPage - 1)}>
-                Previous
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) pageNum = i + 1;
-              else if (currentPage <= 3) pageNum = i + 1;
-              else if (currentPage >= totalPages - 2) pageNum = totalPages - (4 - i);
-              else pageNum = currentPage - 2 + i;
-
-              if (pageNum <= totalPages) {
-                return (
-                  <button
-                    key={pageNum}
-                    className={`px-2 py-1 border ${currentPage === pageNum ? 'bg-[#124451] text-white' : 'text-gray-700'}`}
-                    onClick={() => handlePageChange(pageNum)}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              }
-            })}
-          </div>
-          <div>
-            {currentPage < totalPages && (
-              <button className="px-3 py-1 border rounded text-gray-700" onClick={() => handlePageChange(currentPage + 1)}>
-                Next
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Filter Popup */}
       {showFilter && (
-        <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-[#124451] mb-4">Apply Filters</h3>
-            <div className="mb-4">
-              <DatePicker
-                selected={filters.start_date}
-                onChange={(date) => setFilters((prev) => ({ ...prev, start_date: date }))}
-                placeholderText="Start Date"
-                className="w-full p-2 border rounded-md"
-              />
-              <DatePicker
-                selected={filters.end_date}
-                onChange={(date) => setFilters((prev) => ({ ...prev, end_date: date }))}
-                placeholderText="End Date"
-                className="w-full p-2 border rounded-md mt-2"
-              />
-            </div>
+        <FilterModal
+          onClose={() => setShowFilter(false)}
+          onSubmit={handleFilterSubmit}
+          availableDates={availableDates}
+          filters={filters}
+        />
+      )}
+
+      {!loading && Object.keys(groupedItems).length === 0 && (
+        <div className="text-center text-gray-500 mt-12">No grouped orders found.</div>
+      )}
+
+      {/* Pagination Controls */}
+      {!loading && totalPages > 1 && (
+        <div className="flex justify-center gap-4 mt-8">
+          <button
+            className="px-3 py-1 bg-[#124451] text-white rounded"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Prev
+          </button>
+          <span className="flex items-center justify-center font-semibold px-3 py-1 border rounded">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            className="px-3 py-1 bg-[#124451] text-white rounded"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FilterModal = ({ onClose, onSubmit, availableDates, filters }) => {
+  const [startDate, setStartDate] = useState(filters.start_date);
+  const [endDate, setEndDate] = useState(filters.end_date);
+  const [specificDate, setSpecificDate] = useState(filters.specific_date);
+  const [month, setMonth] = useState(filters.month);
+
+  // Generate month options from availableDates
+  const uniqueMonths = Array.from(
+    new Set(
+      availableDates.map((dateStr) => {
+        const dt = new Date(dateStr);
+        return dt.toISOString().slice(0, 7); // YYYY-MM
+      })
+    )
+  );
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit({
+      start_date: startDate,
+      end_date: endDate,
+      specific_date: specificDate,
+      month: month,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-start pt-10 md:pt-20 z-50">
+          <div className="bg-white p-6 rounded-lg w-[400px]">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 font-bold text-xl"
+          aria-label="Close filter modal"
+        >
+          &times;
+        </button>
+        <h3 className="text-lg font-semibold mb-4 text-[#124451]">Filter Orders</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block mb-1 font-medium">Start Date</label>
+            <DatePicker
+              selected={startDate}
+              onChange={(date) => setStartDate(date)}
+              dateFormat="dd/MM/yyyy"
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              placeholderText="Select start date"
+              maxDate={endDate || null}
+              isClearable
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">End Date</label>
+            <DatePicker
+              selected={endDate}
+              onChange={(date) => setEndDate(date)}
+              dateFormat="dd/MM/yyyy"
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              placeholderText="Select end date"
+              minDate={startDate || null}
+              isClearable
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Specific Date</label>
+            <DatePicker
+              selected={specificDate}
+              onChange={(date) => setSpecificDate(date)}
+              dateFormat="dd/MM/yyyy"
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              placeholderText="Select specific date"
+              isClearable
+            />
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Month</label>
+            <select
+              value={month || ''}
+              onChange={(e) => setMonth(e.target.value || null)}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+            >
+              <option value="">-- Select month --</option>
+              {uniqueMonths.map((m) => (
+                <option key={m} value={m}>
+                  {new Date(m + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-2">
             <button
-              className="w-full bg-[#124451] text-white py-2 rounded-lg"
-              onClick={() => handleFilterSubmit(filters)}
+              type="button"
+              className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="bg-[#124451] text-white px-4 py-2 rounded hover:bg-[#0d3436]"
             >
               Apply Filters
             </button>
           </div>
-        </div>
-      )}
+        </form>
+      </div>
     </div>
   );
 };

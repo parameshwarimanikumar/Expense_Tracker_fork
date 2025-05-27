@@ -85,11 +85,18 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    count = models.IntegerField(default=1)
+    morning_count = models.IntegerField(default=0)
+    evening_count = models.IntegerField(default=0)
     added_date = models.DateTimeField(default=timezone.now)
+
+    @property
+    def count(self):
+        return self.morning_count + self.evening_count
 
     def __str__(self):
         return f"{self.count}x {self.item.item_name} in Order #{self.order.id}"
+
+
     
 @receiver(post_save, sender=OrderItem)
 @receiver(post_delete, sender=OrderItem)
