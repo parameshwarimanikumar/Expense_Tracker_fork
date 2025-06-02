@@ -132,18 +132,14 @@ const RecentTable = () => {
                   const canEdit = isToday && isCurrentUser && !isRefunded;
                   const canDelete = isToday;
 
-                  // Safely create a unique key and tooltip ID
+                  // Unique key and tooltip IDs
                   const safeKey =
                     data.order_id ??
                     data.id ??
-                    `${data.user || "unknown"}-${
-                      data.date || "nodate"
-                    }-${index}`;
+                    `${data.user || "unknown"}-${data.date || "nodate"}-${index}`;
 
                   const editTooltipId = `edit-tooltip-${safeKey}`;
                   const deleteTooltipId = `delete-tooltip-${safeKey}`;
-
-                  
 
                   return (
                     <tr
@@ -154,9 +150,7 @@ const RecentTable = () => {
                         {dayjs(data.date).format("MMM D, YYYY")}
                       </td>
                       <td className="p-2 md:p-3">{data.user}</td>
-                      <td className="p-2 md:p-3 text-center">
-                        {data.total_count}
-                      </td>
+                      <td className="p-2 md:p-3 text-center">{data.total_count}</td>
                       <td className="p-2 md:p-3 text-center">
                         ₹
                         {(data.total_amount && !isNaN(data.total_amount)
@@ -164,7 +158,6 @@ const RecentTable = () => {
                           : 0
                         ).toFixed(2)}
                       </td>
-
                       <td className="p-2 md:p-3 flex justify-center gap-4">
                         <button
                           onClick={() => handleEdit(data)}
@@ -182,36 +175,22 @@ const RecentTable = () => {
                               : ""
                           }
                           className={`${
-                            !canEdit
-                              ? "cursor-not-allowed opacity-50"
-                              : "cursor-pointer"
+                            !canEdit ? "cursor-not-allowed opacity-50" : "cursor-pointer"
                           }`}
                         >
-                          <FaEdit
-                            size={14}
-                            color={canEdit ? "#16A63D" : "gray"}
-                          />
+                          <FaEdit size={14} color={canEdit ? "#16A63D" : "gray"} />
                         </button>
 
                         <button
                           onClick={() => handleDelete(data)}
                           disabled={!canDelete}
                           data-tooltip-id={deleteTooltipId}
-                          data-tooltip-content={
-                            canDelete
-                              ? ""
-                              : "Only today's entries can be deleted"
-                          }
+                          data-tooltip-content={canDelete ? "" : "Only today's entries can be deleted"}
                           className={`${
-                            !canDelete
-                              ? "cursor-not-allowed opacity-50"
-                              : "cursor-pointer"
+                            !canDelete ? "cursor-not-allowed opacity-50" : "cursor-pointer"
                           }`}
                         >
-                          <FaTrash
-                            size={14}
-                            color={canDelete ? "red" : "gray"}
-                          />
+                          <FaTrash size={14} color={canDelete ? "red" : "gray"} />
                         </button>
 
                         <Tooltip id={editTooltipId} />

@@ -1,19 +1,33 @@
-import React from 'react'
-import Sidebar from '../components/Layout/Sidebar'
-import Navbar from '../components/Layout/Navbar'
-import Card from '../components/HomeComponents/Card'
-import RecentTable from '../components/HomeComponents/RecentTable'
+import React from 'react';
+import Sidebar from '../components/Layout/Sidebar';
+import Navbar from '../components/Layout/Navbar';
+import Card from '../components/HomeComponents/Card';
+import RecentTable from '../components/HomeComponents/RecentTable';
 
 const Home = () => {
   return (
-    <div className="">
-    
-        <div className="space-y-6">
-          <Card/>
-          <RecentTable />
-        </div>
-    </div>
-  )
-}
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <Sidebar />
 
-export default Home
+      {/* Main content area */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Navbar */}
+        <Navbar />
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto px-6 py-8">
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <Card />
+
+            {/* Recent Table and Add/Edit Form */}
+            <RecentTable />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default Home;

@@ -39,12 +39,6 @@ const calculateSummary = (expenses) => {
   ];
 };
 
-const data2 = [
-  { name: "Total", value: 2000 },
-  { name: "Other Expense", value: 1000 },
-  { name: "Regular Expense", value: 1000 },
-];
-
 const BACKEND_URL = "http://localhost:8000";
 
 const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
@@ -295,10 +289,6 @@ const ProfilePage = () => {
     localStorage.setItem("user", JSON.stringify(updatedUser));
   };
 
-  // Calculate total for data2 for legend %
-  const totalChart1 = data2.reduce((acc, item) => acc + item.value, 0);
-  const chartData1 = data2;
-
   return (
     <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50 p-4">
       <div className="bg-blue-50 rounded-2xl shadow-xl flex max-w-6xl w-full h-[90vh] overflow-hidden">
@@ -324,7 +314,8 @@ const ProfilePage = () => {
             />
           </div>
 
-          <h2 className="text-xl font-bold mb-8">{user.name}</h2>
+          <h2 className="text-xl font-semibold">{user.name}</h2>
+          <p className="text-sm mb-6">{user.email || "No email found"}</p>
 
           <button
             onClick={() => setActiveView("personalInfo")}
@@ -366,10 +357,9 @@ const ProfilePage = () => {
         <div className="flex-1 p-8 overflow-y-auto">
           {activeView === "dashboard" && (
             <>
-              <h1 className="text-4xl font-semibold italic mb-4">Dashboard</h1>
               <div className="flex flex-col gap-8">
                 <div className="flex gap-12 flex-wrap justify-center">
-                  <div className="bg-white p-6 rounded-3xl w-150 shadow-md">
+                  <div className="bg-white p-6 rounded-3xl w-150 shadow-md ml-6 mr-6">
                     <h2 className="mb-4 font-semibold text-lg">Expense Type</h2>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
@@ -379,9 +369,10 @@ const ProfilePage = () => {
                           nameKey="name"
                           cx="50%"
                           cy="50%"
+                          innerRadius={60} // <-- Add this line to create the donut hole
                           outerRadius={100}
                           label={({ name, value, percent }) =>
-                            `${name} ${value} (${(percent * 100).toFixed(0)}%)`
+                            `${name} ₹${value} (${(percent * 100).toFixed(0)}%)`
                           }
                         >
                           {pieChartData.map((entry, index) => (
@@ -392,48 +383,6 @@ const ProfilePage = () => {
                           ))}
                         </Pie>
                         <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-3xl w-150 shadow-md">
-                    <h2 className="mb-4 font-semibold text-lg">
-                      Expense Category
-                    </h2>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={chartData1}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={90}
-                          label={({ name, value, percent }) =>
-                            `${name} ${value} (${(percent * 100).toFixed(0)}%)`
-                          }
-                        >
-                          {chartData1.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={COLORS[index % COLORS.length]}
-                            />
-                          ))}
-                        </Pie>
-                        <Legend
-                          verticalAlign="bottom"
-                          formatter={(value) => {
-                            const item = chartData1.find(
-                              (i) => i.name === value
-                            );
-                            if (!item) return value;
-                            const percent = (
-                              (item.value / totalChart1) *
-                              100
-                            ).toFixed(0);
-                            return `${value} (${percent}%)`;
-                          }}
-                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
