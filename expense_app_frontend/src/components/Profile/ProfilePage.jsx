@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Table from "./Table"; // Your data table component
-import Mydata from "./Mydata"; // Your "My Expense" component
+import Table from "./Table";
+import Mydata from "./Mydata";
 import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -15,21 +15,16 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 const COLORS = ["#0E4351", "#971C8A", "#6B4BB0"];
+const BACKEND_URL = "http://localhost:8000";
 
 const calculateSummary = (expenses) => {
-  let total = 0;
-  let refunded = 0;
-  let pending = 0;
+  let total = 0, refunded = 0, pending = 0;
 
   expenses.forEach((expense) => {
     const amount = Number(expense.amount);
     total += amount;
-
-    if (expense.is_refunded) {
-      refunded += amount;
-    } else if (!expense.is_verified) {
-      pending += amount;
-    }
+    if (expense.is_refunded) refunded += amount;
+    else if (!expense.is_verified) pending += amount;
   });
 
   return [
@@ -38,8 +33,6 @@ const calculateSummary = (expenses) => {
     { name: "Pending", value: pending },
   ];
 };
-
-const BACKEND_URL = "http://localhost:8000";
 
 const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -93,6 +86,7 @@ const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
       if (formData.profile_picture_file) {
         formDataToSend.append("profile_picture", formData.profile_picture_file);
       }
+
       const response = await fetch(
         `${BACKEND_URL}/api/update-profile-picture/`,
         {
@@ -105,25 +99,22 @@ const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
       );
 
       if (!response.ok) throw new Error("Failed to update profile");
-
       const updatedUser = await response.json();
 
-      onUpdateUser({
-        ...user,
+      const normalizedUser = {
         name: updatedUser.name,
         email: updatedUser.email,
-        profile_picture: normalizeProfilePictureUrl(
-          updatedUser.profile_picture
-        ),
-      });
+        profile_picture: normalizeProfilePictureUrl(updatedUser.profile_picture),
+      };
 
+      onUpdateUser(normalizedUser);
+      localStorage.setItem("user", JSON.stringify(normalizedUser));
       setIsEditing(false);
     } catch (error) {
       alert(error.message);
     }
   };
 
-  // helper function used here too
   const normalizeProfilePictureUrl = (url) => {
     if (!url || url.trim() === "") return "/default-avatar.png";
     if (url.startsWith("http")) return url;
@@ -176,25 +167,21 @@ const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
       </div>
 
       {!isEditing ? (
-        <>
-          <center>
-            <div className="mb-4">
-              <p className="mb-2 text-lg">
-                <strong>Name:</strong> {user.name}
-              </p>
-              <p className="mb-2 text-lg">
-                <strong>Email:</strong> {user.email || "No email provided"}
-              </p>
-            </div>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 transition-all duration-200"
-            >
-              <FontAwesomeIcon icon={faEdit} />
-              <span>Edit</span>
-            </button>
-          </center>
-        </>
+        <center>
+          <p className="mb-2 text-lg">
+            <strong>Name:</strong> {user.name}
+          </p>
+          <p className="mb-2 text-lg">
+            <strong>Email:</strong> {user.email || "No email provided"}
+          </p>
+          <button
+            onClick={() => setIsEditing(true)}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 transition-all duration-200"
+          >
+            <FontAwesomeIcon icon={faEdit} />
+            <span>Edit</span>
+          </button>
+        </center>
       ) : (
         <>
           <label className="block mb-4">
@@ -243,20 +230,45 @@ const PersonalInfo = ({ user, onUpdateUser, setActiveView }) => {
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-
   const [user, setUser] = useState({
     name: "",
     email: "",
     profile_picture: "/default-avatar.png",
   });
-
-  // activeView: 'personalInfo', 'myExpense'
   const [activeView, setActiveView] = useState("dashboard");
   const [expenses, setExpenses] = useState([]);
 
   useEffect(() => {
-    // Fetch your expenses here
-    fetch("http://localhost:8000/api/expenses", {
+    fetch(`${BACKEND_URL}/api/profile/`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access")}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const updatedUser = {
+          name: data.name,
+          email: data.email,
+          profile_picture: normalizeProfilePictureUrl(data.profile_picture),
+        };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      });
+  }, []);
+
+  const normalizeProfilePictureUrl = (url) => {
+    if (!url || url.trim() === "") return "/default-avatar.png";
+    if (url.startsWith("http")) return url;
+    return `${BACKEND_URL}${url}`;
+  };
+
+  const handleUpdateUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/expenses`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access")}`,
       },
@@ -266,28 +278,6 @@ const ProfilePage = () => {
   }, []);
 
   const pieChartData = calculateSummary(expenses);
-
-  const normalizeProfilePictureUrl = (url) => {
-    if (!url || url.trim() === "") return "/default-avatar.png";
-    if (url.startsWith("http")) return url;
-    return `${BACKEND_URL}${url}`;
-  };
-
-  useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    if (storedUser) {
-      setUser({
-        name: storedUser.name || storedUser.username || "Guest",
-        email: storedUser.email || "",
-        profile_picture: normalizeProfilePictureUrl(storedUser.profile_picture),
-      });
-    }
-  }, []);
-
-  const handleUpdateUser = (updatedUser) => {
-    setUser(updatedUser);
-    localStorage.setItem("user", JSON.stringify(updatedUser));
-  };
 
   return (
     <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50 p-4">
@@ -346,14 +336,14 @@ const ProfilePage = () => {
               localStorage.clear();
               navigate("/login");
             }}
-            className="mt-auto flex items-center gap-2 px-4 py-2 rounded  transition-colors"
+            className="mt-auto flex items-center gap-2 px-4 py-2 rounded transition-colors"
           >
             <FontAwesomeIcon icon={faSignOutAlt} />
             Logout
           </button>
         </div>
 
-        {/* Main content */}
+        {/* Main Content */}
         <div className="flex-1 p-8 overflow-y-auto">
           {activeView === "dashboard" && (
             <>
@@ -369,7 +359,7 @@ const ProfilePage = () => {
                           nameKey="name"
                           cx="50%"
                           cy="50%"
-                          innerRadius={60} // <-- Add this line to create the donut hole
+                          innerRadius={60}
                           outerRadius={100}
                           label={({ name, value, percent }) =>
                             `${name} ₹${value} (${(percent * 100).toFixed(0)}%)`
@@ -387,7 +377,6 @@ const ProfilePage = () => {
                     </ResponsiveContainer>
                   </div>
                 </div>
-
                 <Table />
               </div>
             </>
@@ -400,6 +389,7 @@ const ProfilePage = () => {
               setActiveView={setActiveView}
             />
           )}
+
           {activeView === "myExpense" && (
             <>
               <button

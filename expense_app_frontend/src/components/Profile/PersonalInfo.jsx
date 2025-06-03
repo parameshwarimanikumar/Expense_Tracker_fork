@@ -5,12 +5,13 @@ import { FaPen } from "react-icons/fa"; // Pencil icon
 const PersonalInfo = () => {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    first_name: "",
+    name: "",
     email: "",
     password: "",
     profilePic: null,
     previewPic: "",
   });
+  const [initialData, setInitialData] = useState(null);
 
   useEffect(() => {
     axios
@@ -20,13 +21,20 @@ const PersonalInfo = () => {
         },
       })
       .then((res) => {
-        const { first_name, email, profile_picture } = res.data;
-        setFormData((prev) => ({
-          ...prev,
-          first_name,
+        const { name, email, profile_picture } = res.data;
+        const newData = {
+          name,
           email,
-          previewPic: profile_picture,
-        }));
+          password: "",
+          profilePic: null,
+          previewPic: profile_picture || "/default-avatar.png", // fallback image
+        };
+        setFormData(newData);
+        setInitialData(newData);
+      })
+      .catch(() => {
+        // Handle error fetching profile if needed
+        alert("Failed to load profile data.");
       });
   }, []);
 
@@ -37,20 +45,21 @@ const PersonalInfo = () => {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    setFormData((prev) => ({
-      ...prev,
-      profilePic: file,
-      previewPic: URL.createObjectURL(file),
-    }));
+    if (file) {
+      setFormData((prev) => ({
+        ...prev,
+        profilePic: file,
+        previewPic: URL.createObjectURL(file),
+      }));
+    }
   };
 
   const handleSave = async () => {
     const data = new FormData();
-    data.append("first_name", formData.first_name);
+    data.append("name", formData.name);
     data.append("email", formData.email);
     if (formData.password) data.append("password", formData.password);
-    if (formData.profilePic)
-      data.append("profile_picture", formData.profilePic);
+    if (formData.profilePic) data.append("profile_picture", formData.profilePic);
 
     try {
       await axios.put("/api/profile/", data, {
@@ -61,9 +70,26 @@ const PersonalInfo = () => {
       });
       alert("Profile updated successfully");
       setEditMode(false);
+      setInitialData({
+        ...formData,
+        password: "",
+        profilePic: null,
+      }); // update initial data with saved info (reset password & profilePic)
+      setFormData((prev) => ({
+        ...prev,
+        password: "", // clear password after save
+        profilePic: null,
+      }));
     } catch {
       alert("Error updating profile");
     }
+  };
+
+  const handleCancel = () => {
+    if (initialData) {
+      setFormData(initialData);
+    }
+    setEditMode(false);
   };
 
   return (
@@ -72,7 +98,7 @@ const PersonalInfo = () => {
 
       <div className="relative flex flex-col items-center mb-4">
         <img
-          src={formData.previewPic}
+          src={formData.previewPic || "/default-avatar.png"}
           alt="Profile"
           className="w-24 h-24 rounded-full object-cover border"
         />
@@ -99,8 +125,8 @@ const PersonalInfo = () => {
       <div className="mb-4">
         <label className="block text-sm font-medium mb-1">Full Name</label>
         <input
-          name="first_name"
-          value={formData.first_name}
+          name="name"
+          value={formData.name}
           onChange={handleChange}
           disabled={!editMode}
           className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
@@ -111,6 +137,7 @@ const PersonalInfo = () => {
         <label className="block text-sm font-medium mb-1">Email</label>
         <input
           name="email"
+          type="email"
           value={formData.email}
           onChange={handleChange}
           disabled={!editMode}
@@ -127,6 +154,7 @@ const PersonalInfo = () => {
           disabled={!editMode}
           placeholder="Enter new password"
           className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+          value={formData.password}
         />
       </div>
 
@@ -140,7 +168,7 @@ const PersonalInfo = () => {
               Save
             </button>
             <button
-              onClick={() => window.location.reload()}
+              onClick={handleCancel}
               className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 transition"
             >
               Cancel

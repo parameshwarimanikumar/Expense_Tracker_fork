@@ -53,14 +53,14 @@ def update_profile_picture(request):
 
     # Optional: handle name and email too
     if 'name' in request.data:
-        user.first_name = request.data['name']
+        user.name = request.data['name']
     if 'email' in request.data:
         user.email = request.data['email']
 
     user.save()
 
     return Response({
-        'name': user.first_name,
+        'name': user.name,
         'email': user.email,
         'profile_picture': request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else '',
     })
@@ -75,13 +75,13 @@ def user_profile(request):
 
     if request.method == 'GET':
         return Response({
-            'name': user.first_name,
+            'name': user.name,
             'email': user.email,
             'profile_picture': request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else '',
         })
 
     elif request.method == 'PUT':
-        user.first_name = request.data.get('name', user.first_name)
+        user.name = request.data.get('name', user.name)
         user.email = request.data.get('email', user.email)
 
         if request.data.get('password'):

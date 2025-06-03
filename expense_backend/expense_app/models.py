@@ -23,6 +23,7 @@ class Role(models.Model):
 class User(AbstractUser):
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True)
     email = models.EmailField(unique=True)
+    name = models.CharField(max_length=150, blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)  # ✅ Add this line
     created_date = models.DateTimeField(default=timezone.now)
     updated_date = models.DateTimeField(auto_now=True)

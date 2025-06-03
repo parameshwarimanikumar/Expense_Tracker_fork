@@ -2,7 +2,7 @@ import React from 'react';
 import Sidebar from '../components/Layout/Sidebar';
 import Navbar from '../components/Layout/Navbar';
 import Card from '../components/HomeComponents/Card';
-import RecentTable from '../components/HomeComponents/RecentTable';
+import AddItemTable from '../components/HomeComponents/AddItemTable';
 
 const Home = () => {
   return (
@@ -22,7 +22,7 @@ const Home = () => {
             <Card />
 
             {/* Recent Table and Add/Edit Form */}
-            <RecentTable />
+            <AddItemTable />
           </div>
         </main>
       </div>
