@@ -212,18 +212,22 @@ def item_list_create(request):
         items = Item.objects.all()
         serializer = ItemSerializer(items, many=True)
         return Response(serializer.data)
-    
+
     elif request.method == 'POST':
+        # Allow only admins to create items
         if not request.user.role or request.user.role.role_name.lower() != 'admin':
             return Response({'error': 'Only admin can create items'}, status=status.HTTP_403_FORBIDDEN)
-        
-        data = request.data.copy()
-        data['created_user'] = request.user.id
-        serializer = ItemSerializer(data=data)
+
+        # ✅ Do NOT manually inject 'created_user'
+        serializer = ItemSerializer(data=request.data, context={'request': request})
+
         if serializer.is_valid():
-            serializer.save()
+            serializer.save()  # created_user will be set inside the serializer
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # Return validation errors (if any)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated, IsAdminUser])
@@ -456,7 +460,6 @@ def expense_detail(request, pk):
         expense.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-# Order Views
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -473,66 +476,50 @@ def order_list_create(request):
     elif request.method == 'POST':
         try:
             with db_transaction.atomic():
-                # Create the order first
+                # Create new Order
                 order = Order.objects.create(
                     created_user=request.user,
                     calculated_price=0  # Will be updated after items are added
                 )
 
-                # Create order items
-                order_items = []
                 for item_data in request.data.get('order_items', []):
-
-                    # raw_date = item_data.get('added_date')
-                    # if raw_date:
-                    #     try:
-                            
-                    #         added_date = parser.isoparse(raw_date)
-                    #         if timezone.is_naive(added_date):
-                    #             added_date = timezone.make_aware(added_date)
-                    #     except Exception:
-                    #         added_date = timezone.now()
-                    # else:
-                    #     added_date = timezone.now()
-                    
-
+                    item_id = item_data.get('item')
                     raw_date = item_data.get('added_date')
+                    count = int(item_data.get('count', 0))
 
+                    # Parse and validate added_date
                     if raw_date:
                         try:
                             added_date = parser.isoparse(raw_date)
-
-                            # If the parsed date is naive (no timezone), make it aware
                             if timezone.is_naive(added_date):
                                 added_date = timezone.make_aware(added_date)
-
                         except Exception as e:
                             print(f"Invalid added_date format: {raw_date} — Error: {e}")
                             return Response({'error': f'Invalid date format: {raw_date}'}, status=400)
-
                     else:
                         return Response({'error': 'Missing added_date for one of the items.'}, status=400)
 
+                    # Split count into morning and evening
+                    morning_count = count // 2
+                    evening_count = count - morning_count
 
-
-                    order_item = OrderItem.objects.create(
+                    # Create OrderItem
+                    OrderItem.objects.create(
                         order=order,
-                        item_id=item_data.get('item'),
-                        count=item_data.get('count', 1),
-                        # added_date=timezone.now()
+                        item_id=item_id,
+                        morning_count=morning_count,
+                        evening_count=evening_count,
                         added_date=added_date
                     )
-                    order_items.append(order_item)
 
-                # Update the order total
+                # Recalculate total price after adding all items
                 order.update_total_price()
-                
+
                 serializer = OrderSerializer(order)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-                
+
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def order_detail(request, pk):

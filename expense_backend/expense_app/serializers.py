@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .models import *
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -20,7 +19,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
-    profile_picture = serializers.SerializerMethodField()  # <-- change here
+    profile_picture = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -38,10 +37,17 @@ class UserSerializer(serializers.ModelSerializer):
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
 
+
 class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Item
         fields = '__all__'
+        read_only_fields = ['created_user', 'created_date', 'updated_date']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        validated_data['created_user'] = user
+        return super().create(validated_data)
 
 
 class ItemPriceHistorySerializer(serializers.ModelSerializer):
@@ -69,7 +75,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
         if obj.bill and request:
             return request.build_absolute_uri(obj.bill.url)
         elif obj.bill:
-            return obj.bill.url  # fallback: relative URL if no request
+            return obj.bill.url
         return None
 
     def update(self, instance, validated_data):
@@ -98,7 +104,7 @@ class BillSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    item = ItemSerializer(read_only=True)
+    item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())  # Accept item ID in input
     added_date = serializers.DateTimeField(
         format="%Y-%m-%dT%H:%M:%S.%fZ",
         input_formats=[
@@ -106,10 +112,10 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "%Y-%m-%dT%H:%M:%S.%f",
             "%Y-%m-%dT%H:%M:%SZ",
             "%Y-%m-%d",
-            "iso-8601"  # Fallback that lets DRF parse default ISO strings
+            "iso-8601"
         ]
     )
-    order = serializers.PrimaryKeyRelatedField(read_only=True)  # returns only order ID
+    order = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = OrderItem
@@ -117,12 +123,30 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    order_items = OrderItemSerializer(many=True, read_only=True)
+    order_items = OrderItemSerializer(many=True, source='orderitem_set')
 
     class Meta:
         model = Order
         fields = ['id', 'created_user', 'calculated_price', 'created_date', 'order_items']
         read_only_fields = ['created_user', 'calculated_price', 'created_date']
+
+
+    def create(self, validated_data):
+        order_items_data = validated_data.pop('order_items')
+        user = self.context['request'].user
+        order = Order.objects.create(created_user=user, **validated_data)
+
+        total_price = 0
+        for item_data in order_items_data:
+            item = item_data['item']
+            count = item_data['count']
+            OrderItem.objects.create(order=order, **item_data)
+            total_price += item.item_price * count
+
+        order.calculated_price = total_price
+        order.save()
+
+        return order
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -152,16 +176,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         if not email or '@' not in email:
             raise serializers.ValidationError({"email": "Valid email is required."})
 
-        # Default validation (checks password + active user)
         try:
             data = super().validate(attrs)
         except AuthenticationFailed:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
 
-        # Add custom claims
         refresh = self.get_token(self.user)
         data.update({
-            'user': UserSerializer(self.user).data,
+            'user': UserSerializer(self.user, context=self.context).data,
             'role_id': self.user.role.role_name if self.user.role else None
         })
         return data

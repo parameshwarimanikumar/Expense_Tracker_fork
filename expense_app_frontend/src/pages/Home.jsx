@@ -2,7 +2,7 @@ import React from 'react';
 import Sidebar from '../components/Layout/Sidebar';
 import Navbar from '../components/Layout/Navbar';
 import Card from '../components/HomeComponents/Card';
-import AddItemTable from '../components/HomeComponents/AddItemTable';
+import RecentTable from '../components/HomeComponents/RecentTable';
 
 const Home = () => {
   return (
@@ -10,20 +10,18 @@ const Home = () => {
       {/* Sidebar */}
       <Sidebar />
 
-      {/* Main content area */}
+      {/* Main Content */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Navbar */}
         <Navbar />
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto px-6 py-8">
-          <div className="space-y-6">
-            {/* Summary Cards */}
-            <Card />
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Summary Cards */}
+          <Card />
 
-            {/* Recent Table and Add/Edit Form */}
-            <AddItemTable />
-          </div>
+          {/* Recent Entries and Add Item side-by-side */}
+          <RecentTable />
         </main>
       </div>
     </div>
