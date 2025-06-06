@@ -272,7 +272,7 @@ const AddItemTable = () => {
       </form>
 
       {showAddModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg w-96 shadow-md">
             <h3 className="text-lg font-semibold mb-4 text-[#1e2a52]">
               Add New Item

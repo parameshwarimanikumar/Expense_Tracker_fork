@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { faFilePdf, faFilter } from "@fortawesome/free-solid-svg-icons";
+import { faFileExcel, faFilter } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { getGroupedOrders, getAvailableDates } from "../../api_service/api";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { jsPDF } from "jspdf";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const DataTable = () => {
   const [groupedItems, setGroupedItems] = useState({});
@@ -23,7 +24,6 @@ const DataTable = () => {
 
   const PAGE_SIZE = 10;
 
-  // Fetch data with filters and pagination
   const fetchData = useCallback(
     async (page = 1) => {
       setLoading(true);
@@ -42,13 +42,11 @@ const DataTable = () => {
         if (filters.month) apiFilters.month = filters.month;
 
         const data = await getGroupedOrders(page, PAGE_SIZE, apiFilters);
-
         setGroupedItems(data.results);
         setTotalPrice(data.total_price);
         setTotalPages(data.total_pages);
         setCurrentPage(page);
 
-        // Fetch available dates once for filters dropdowns, etc.
         if (availableDates.length === 0) {
           const dates = await getAvailableDates();
           setAvailableDates(dates);
@@ -79,66 +77,88 @@ const DataTable = () => {
     }
   };
 
+  // Updated formatDate to return a safe sheet name for Excel (YYYY-MM-DD)
   const formatDate = (dateString) => {
-    const options = { day: "2-digit", month: "2-digit", year: "numeric" };
-    return new Date(dateString).toLocaleDateString("en-GB", options);
+    const d = new Date(dateString);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
-  // PDF download handler using jsPDF
-  const downloadPDF = () => {
-    const doc = new jsPDF();
-    let y = 10;
+  const downloadExcel = () => {
+    const workbook = XLSX.utils.book_new();
 
-    doc.setFontSize(16);
-    doc.text("Grouped Orders Report", 10, y);
-    y += 10;
-    doc.setFontSize(12);
-    doc.text(`Total Price: ₹${totalPrice.toFixed(2)}`, 10, y);
-    y += 10;
+    const allRows = [
+      ["Date", "Item Name", "Count", "Price per Item", "Total Price"],
+    ];
+
+    let grandTotal = 0;
 
     Object.keys(groupedItems).forEach((date) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 10;
-      }
-      doc.setFontSize(14);
-      doc.text(`Date: ${formatDate(date)}`, 10, y);
-      y += 8;
-
-      doc.setFontSize(11);
-      doc.text("Item Name", 10, y);
-      doc.text("Count", 80, y);
-      doc.text("Price/item", 110, y);
-      doc.text("Total Price", 150, y);
-      y += 6;
-
       const items = groupedItems[date];
-      let totalPerDate = 0;
 
       items.forEach((item) => {
-        if (y > 270) {
-          doc.addPage();
-          y = 10;
-        }
-        doc.text(item.item_name, 10, y);
-        doc.text(String(item.count), 80, y);
-        doc.text(`₹${item.price.toFixed(2)}`, 110, y);
-        const totalItemPrice = item.count * item.price;
-        doc.text(`₹${totalItemPrice.toFixed(2)}`, 150, y);
-        totalPerDate += totalItemPrice;
-        y += 6;
+        const itemTotal = item.count * item.price;
+        grandTotal += itemTotal;
+
+        allRows.push([
+          formatDate(date),
+          item.item_name,
+          item.count,
+          item.price,
+          itemTotal.toFixed(2),
+        ]);
       });
 
-      doc.setFontSize(12);
-      doc.text(
-        `Total for ${formatDate(date)}: ₹${totalPerDate.toFixed(2)}`,
-        10,
-        y
-      );
-      y += 10;
+      // Add empty row after each date group
+      allRows.push([]);
     });
 
-    doc.save("orders_report.pdf");
+    // Add Grand Total row
+    allRows.push([]);
+    allRows.push(["", "", "", "Grand Total", grandTotal.toFixed(2)]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet(allRows);
+
+    // Auto column width
+    const colWidths = allRows[0].map((_, colIndex) => {
+      return Math.max(
+        ...allRows.map((row) => {
+          const cell = row[colIndex];
+          if (cell == null) return 10;
+          return cell.toString().length + 2;
+        })
+      );
+    });
+    worksheet["!cols"] = colWidths.map((w) => ({ wch: w }));
+
+    // Bold header row
+    const range = XLSX.utils.decode_range(worksheet["!ref"]);
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (worksheet[cellAddress]) {
+        worksheet[cellAddress].s = {
+          font: { bold: true, sz: 16, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "305496" } },
+          alignment: { horizontal: "center", vertical: "center" },
+        };
+      }
+    }
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "All Orders");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    const fileName = `all_orders_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    saveAs(blob, fileName);
   };
 
   return (
@@ -152,11 +172,12 @@ const DataTable = () => {
         <div className="flex gap-2 w-full md:w-auto">
           <button
             className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full flex items-center gap-1"
-            onClick={downloadPDF}
+            onClick={downloadExcel}
           >
-            <FontAwesomeIcon icon={faFilePdf} className="text-red-500" />
-            <span className="hidden sm:inline">Download PDF</span>
+            <FontAwesomeIcon icon={faFileExcel} className="text-green-600" />
+            <span className="hidden sm:inline">Download Excel</span>
           </button>
+
           <button
             className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full flex items-center gap-1"
             onClick={() => setShowFilter(true)}
@@ -164,6 +185,7 @@ const DataTable = () => {
             <FontAwesomeIcon icon={faFilter} />
             <span className="hidden sm:inline">Filter</span>
           </button>
+
           <button
             className="bg-gray-300 text-[#124451] px-3 py-1 text-sm md:text-base md:px-4 rounded-full"
             onClick={() =>
@@ -296,7 +318,6 @@ const DataTable = () => {
         </div>
       )}
 
-      {/* Pagination Controls */}
       {!loading && totalPages > 1 && (
         <div className="flex justify-center gap-4 mt-8">
           <button
@@ -327,7 +348,6 @@ const FilterModal = ({ onClose, onSubmit, availableDates, filters }) => {
   const [endDate, setEndDate] = useState(filters.end_date);
   const [month, setMonth] = useState(filters.month);
 
-  // Generate month options from availableDates
   const uniqueMonths = Array.from(
     new Set(
       availableDates.map((dateStr) => {
@@ -349,7 +369,7 @@ const FilterModal = ({ onClose, onSubmit, availableDates, filters }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+    <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
       <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
         <h2 className="text-xl font-bold text-[#124451] mb-4">Filter Orders</h2>
 
@@ -376,7 +396,6 @@ const FilterModal = ({ onClose, onSubmit, availableDates, filters }) => {
             isClearable
           />
         </div>
-
 
         <div className="mb-4">
           <label className="block mb-1 text-sm font-semibold">Month</label>
