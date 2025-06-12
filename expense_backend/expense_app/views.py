@@ -229,25 +229,32 @@ def item_list_create(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET', 'PUT', 'DELETE'])
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def item_detail(request, pk):
     try:
         item = Item.objects.get(pk=pk)
     except Item.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
-    
+
     if request.method == 'GET':
         serializer = ItemSerializer(item)
         return Response(serializer.data)
-    
+
     elif request.method == 'PUT':
         serializer = ItemSerializer(item, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+    elif request.method == 'PATCH':
+        serializer = ItemSerializer(item, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     elif request.method == 'DELETE':
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -623,28 +630,27 @@ def order_item_list(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['GET','PUT','DELETE'])
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def order_item_detail(request, pk):
     order_item = get_object_or_404(OrderItem, id=pk)
-    
-    # Prevent editing if not today's entry
-    if request.method in ['PUT', 'DELETE']:
+
+    if request.method in ['PUT', 'PATCH', 'DELETE']:
         if order_item.added_date.date() != timezone.now().date():
             return Response(
                 {"error": "Only today's records can be edited or deleted"},
                 status=status.HTTP_403_FORBIDDEN
             )
-    
+
     if request.method == "GET":
         serializer = OrderItemSerializer(order_item)
         return Response(serializer.data)
 
-    elif request.method == "PUT":
-        serializer = OrderItemSerializer(order_item, data=request.data, partial=True)
+    elif request.method in ["PUT", "PATCH"]:
+        serializer = OrderItemSerializer(order_item, data=request.data, partial=(request.method == "PATCH"))
         if serializer.is_valid():
             serializer.save()
-            order_item.order.update_total_price() 
+            order_item.order.update_total_price()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -653,7 +659,8 @@ def order_item_detail(request, pk):
         order_item.delete()
         order.update_total_price()
         return Response({"message": "OrderItem deleted"}, status=status.HTTP_204_NO_CONTENT)
-    
+
+
 # Transaction Views
 
 @api_view(['GET', 'POST'])

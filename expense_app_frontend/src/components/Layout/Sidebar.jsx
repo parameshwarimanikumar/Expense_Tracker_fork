@@ -1,29 +1,46 @@
 import React from 'react';
 import brillersys from '../../assets/brillersys.png';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHouse, faIndianRupeeSign, faWallet, faRightFromBracket, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { NavLink } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import {
+  faHouse,
+  faIndianRupeeSign,
+  faWallet,
+  faRightFromBracket,
+  faXmark,
+  faPenToSquare, // ✅ icon for Update Item
+} from '@fortawesome/free-solid-svg-icons';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../api_service/api';
 
 const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
+  const navigate = useNavigate();
+
+  // Get user from localStorage
+  const storedUser = JSON.parse(localStorage.getItem('user'));
+  const isAdmin = parseInt(storedUser?.role) === 1;
+
+  // Define nav items
   const navItems = [
     { path: '/', name: 'Home', icon: faHouse },
     { path: '/regular-expense', name: 'Regular Expense', icon: faIndianRupeeSign },
     { path: '/other-expense', name: 'Other Expense', icon: faWallet },
   ];
 
-  const navigate = useNavigate();
+  // Add admin-only "Update Item" tab
+  if (isAdmin) {
+    navItems.push({ path: '/update-item', name: 'Update Item', icon: faPenToSquare });
+  }
 
+  // Handle logout
   const handleLogout = async () => {
     try {
-      await logoutUser(); // Call logout API (optional)
+      await logoutUser(); // optional
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Always clear tokens
       localStorage.removeItem('access');
       localStorage.removeItem('refresh');
+      localStorage.removeItem('user');
       navigate('/login');
     }
   };
@@ -34,6 +51,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
         isOpen ? 'translate-x-0' : '-translate-x-full'
       } transition-transform duration-300 ease-in-out z-50 md:translate-x-0`}
     >
+      {/* Logo */}
       <div className="h-16 flex items-center justify-center px-4 border-b border-gray-300 relative">
         <img src={brillersys} alt="Brillersys" className="h-8" />
         <button className="text-xl md:hidden absolute right-4" onClick={toggleSidebar}>
@@ -41,6 +59,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
         </button>
       </div>
 
+      {/* Navigation Items */}
       <nav className="p-4 space-y-1">
         {navItems.map((item) => (
           <NavLink
@@ -67,6 +86,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
           </NavLink>
         ))}
 
+        {/* Logout Button */}
         <div className="absolute bottom-4 w-full px-4">
           <button className="flex items-center p-3 text-gray-500 font-medium" onClick={handleLogout}>
             <FontAwesomeIcon icon={faRightFromBracket} className="mr-2" />

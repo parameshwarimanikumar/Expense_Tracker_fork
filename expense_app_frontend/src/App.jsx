@@ -5,7 +5,7 @@ import RegularExpense from './pages/RegularExpense';
 import OtherExpense from './pages/OtherExpense';
 import Login from './pages/Login';
 import ProfilePage from './components/Profile/ProfilePage';
-
+import UpdateItem from './components/UpdateItem/UpdateItem';
 import { setAuthToken } from './api_service/api';
 import { useEffect, useState } from 'react';
 
@@ -43,6 +43,8 @@ function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="regular-expense" element={<RegularExpense />} />
         <Route path="other-expense" element={<OtherExpense />} />
+        <Route path="update-item" element={<UpdateItem />} />
+
       </Route>
     </Routes>
   );
