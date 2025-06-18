@@ -17,7 +17,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
 
   // Get user from localStorage
   const storedUser = JSON.parse(localStorage.getItem('user'));
-  const isAdmin = parseInt(storedUser?.role) === 1;
+  const isAdmin = storedUser?.role?.role_name === 'Admin';
 
   // Define nav items
   const navItems = [

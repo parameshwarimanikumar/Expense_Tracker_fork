@@ -16,7 +16,8 @@ axiosInstance.interceptors.request.use((config) => {
 
 const UpdateItem = () => {
   const storedUser = JSON.parse(localStorage.getItem("user"));
-  const isAdmin = parseInt(storedUser?.role) === 1;
+  const isAdmin = storedUser?.role?.role_name === 'Admin';
+
 
   const [items, setItems] = useState([]);
   const [categoryOptions, setCategoryOptions] = useState([]);

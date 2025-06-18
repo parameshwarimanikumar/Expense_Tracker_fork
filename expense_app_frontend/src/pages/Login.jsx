@@ -19,7 +19,7 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null); // clear previous error
+    setError(null); // Clear previous error
 
     try {
       const data = await loginUser(email, password);
@@ -31,11 +31,10 @@ function Login() {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       const userRole = data?.user?.role?.role_name || 'User';
-      if (userRole === 'User') {
-        navigate('/');
-      } else {
-        // If Admin or other roles, you can navigate differently if needed
-      }
+      console.log('Logged-in user role:', userRole); // Optional debug
+
+      // ✅ Navigate to root - App.jsx will handle role-based dashboard
+      navigate('/');
     } catch (err) {
       console.error(err);
       setError('Invalid credentials. Please try again.');
@@ -47,7 +46,7 @@ function Login() {
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6 text-center text-[#2B3B6C]">Login</h2>
         {error && <div className="text-red-500 mb-4 text-center">{error}</div>}
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email */}
           <div className="relative">

@@ -5,6 +5,8 @@ from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import AuthenticationFailed
 
 
+
+
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
@@ -182,8 +184,29 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError({"detail": "Invalid email or password."})
 
         refresh = self.get_token(self.user)
-        data.update({
-            'user': UserSerializer(self.user, context=self.context).data,
-            'role_id': self.user.role.role_name if self.user.role else None
-        })
+
+        user = self.user
+        request = self.context.get('request')
+
+        profile_picture_url = (
+            request.build_absolute_uri(user.profile_picture.url)
+            if user.profile_picture and request else
+            user.profile_picture.url if user.profile_picture else ''
+        )
+
+        # ✅ Return role nested in user
+        data['user'] = {
+            'id': user.id,
+            'email': user.email,
+            'username': user.username,
+            'name': user.name,
+            'profile_picture': profile_picture_url,
+            'role': {
+                'role_name': user.role.role_name if user.role else None
+            }
+        }
+
+        data['access'] = str(refresh.access_token)
+        data['refresh'] = str(refresh)
+
         return data
