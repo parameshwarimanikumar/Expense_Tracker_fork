@@ -48,6 +48,8 @@ urlpatterns = [
     # Notifications
     path('notifications/', views.notification_list, name='notification-list'),
     path('notifications/<int:pk>/', views.notification_detail, name='notification-detail'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read),
+
 
     # Daily total of regular and others
     path('daily-summary/', views.daily_combined_totals, name='daily-summary'),

@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Bars3Icon } from '@heroicons/react/24/outline';
-import { faBell } from '@fortawesome/free-regular-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import React, { useEffect, useState, useRef } from "react";
+import { Bars3Icon } from "@heroicons/react/24/outline";
+import { faBell } from "@fortawesome/free-regular-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "react-router-dom";
+import axiosInstance from "../../api_service/api";
 
 const Navbar = ({ toggleSidebar, title }) => {
   const navigate = useNavigate();
@@ -14,47 +14,54 @@ const Navbar = ({ toggleSidebar, title }) => {
   const [notifications, setNotifications] = useState([]);
   const [profileImage, setProfileImage] = useState(null);
 
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const handleAvatarClick = () => navigate("/profile");
 
-  const token = localStorage.getItem('access');
+  const handleBellClick = async () => {
+    const toggled = !showDropdown;
+    setShowDropdown(toggled);
 
-  const handleAvatarClick = () => navigate('/profile');
+    // Optional: mark as read on dropdown open
+    if (toggled && unreadCount > 0) {
+      try {
+        await axiosInstance.patch("/notifications/mark-all-read/");
+        setUnreadCount(0);
+      } catch (error) {
+        console.error("Failed to mark notifications as read", error);
+      }
+    }
+  };
 
-  const handleBellClick = () => setShowDropdown(prev => !prev);
+  const fetchNotifications = async () => {
+    try {
+      const res = await axiosInstance.get("/notifications/");
+      console.log("🔔 Notification response:", res.data);
+      setUnreadCount(res.data.unread_count || 0);
+      setNotifications(Array.isArray(res.data.notifications) ? res.data.notifications : []);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  };
+
+  const fetchProfile = async () => {
+    try {
+      const res = await axiosInstance.get("/profile/");
+      if (res.data.profile_picture) {
+        setProfileImage(res.data.profile_picture);
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    }
+  };
 
   useEffect(() => {
-    if (!token) return;
-
-    const fetchNotifications = async () => {
-      try {
-        const res = await axios.get(`${backendUrl}/api/notifications/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUnreadCount(res.data.unread_count || 0);
-        setNotifications(res.data.notifications || []);
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
-      }
-    };
-
-    const fetchProfile = async () => {
-      try {
-        const res = await axios.get(`${backendUrl}/api/profile/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.data.profile_picture) {
-          const fullUrl = new URL(res.data.profile_picture, backendUrl).toString();
-          setProfileImage(fullUrl);
-        }
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-      }
-    };
-
     fetchNotifications();
     fetchProfile();
-  }, [backendUrl, token]);
+
+    // 🔁 Poll every 30 seconds for live bell count
+    const interval = setInterval(fetchNotifications, 30000);
+
+    return () => clearInterval(interval); // cleanup on unmount
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -63,15 +70,17 @@ const Navbar = ({ toggleSidebar, title }) => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
     <div className="fixed top-0 right-0 left-0 md:left-64 bg-white md:bg-[rgba(244,247,254,1)] z-40 shadow">
       <div className="px-4 py-3 flex justify-between items-center">
         {/* Title */}
-        <h1 className="text-2xl text-[#124451] hidden font-semibold md:block">{title}</h1>
+        <h1 className="text-2xl text-[#124451] hidden font-semibold md:block">
+          {title}
+        </h1>
 
         {/* Sidebar Toggle (Mobile Only) */}
         <div className="flex items-center gap-3 md:hidden">
@@ -81,8 +90,11 @@ const Navbar = ({ toggleSidebar, title }) => {
         </div>
 
         {/* Right Section */}
-        <div ref={dropdownRef} className="relative flex items-center gap-6 bg-white rounded-full px-6 py-2">
-          {/* Bell */}
+        <div
+          ref={dropdownRef}
+          className="relative flex items-center gap-6 bg-white rounded-full px-6 py-2"
+        >
+          {/* Bell Icon */}
           <FontAwesomeIcon
             icon={faBell}
             className="text-gray-600 cursor-pointer"
@@ -96,43 +108,45 @@ const Navbar = ({ toggleSidebar, title }) => {
           {unreadCount > 0 && (
             <span
               className="absolute top-1 right-12 px-2 py-1 text-xs font-bold text-white bg-red-600 rounded-full"
-              style={{ width: '18px', height: '18px' }}
+              style={{ width: "18px", height: "18px" }}
               aria-label={`${unreadCount} unread notifications`}
             >
               {unreadCount}
             </span>
           )}
 
-          {/* Dropdown */}
+          {/* Notifications Dropdown */}
           {showDropdown && (
             <div className="absolute right-0 mt-10 w-64 bg-white border border-gray-300 rounded shadow-lg z-50 max-h-60 overflow-auto">
-              {notifications.length === 0 ? (
-                <div className="p-4 text-gray-500">No new notifications</div>
-              ) : (
-                notifications.map((notif, index) => (
+              {Array.isArray(notifications) && notifications.length > 0 ? (
+                notifications.filter(Boolean).map((notif, index) => (
                   <div
-                    key={index}
+                    key={notif.id || index}
                     className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
                   >
-                    <p className="text-sm">{notif.message || notif.title || 'Notification'}</p>
+                    <p className="text-sm">{notif.message || "Notification"}</p>
                     <small className="text-gray-400">
-                      {new Date(notif.created_at).toLocaleString()}
+                      {notif.created_at
+                        ? new Date(notif.created_at).toLocaleString()
+                        : "Just now"}
                     </small>
                   </div>
                 ))
+              ) : (
+                <div className="p-4 text-gray-500">No new notifications</div>
               )}
             </div>
           )}
 
           {/* Avatar */}
           <img
-            src={profileImage || '/default_avatar.png'}
+            src={profileImage || "/default_avatar.png"}
             alt="User Avatar"
             className="w-8 h-8 rounded-full cursor-pointer border-2 border-blue-500 bg-gray-100"
             onClick={handleAvatarClick}
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = '/default_avatar.png';
+              e.target.src = "/default_avatar.png";
             }}
           />
         </div>

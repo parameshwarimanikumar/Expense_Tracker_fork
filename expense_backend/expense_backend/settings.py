@@ -46,6 +46,8 @@ INSTALLED_APPS = [
 
     #app
     'expense_app',
+    'channels',                     # 👈 ADD THIS
+    'channels_redis', 
 ]
 
 MIDDLEWARE = [
@@ -80,7 +82,9 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'expense_backend.wsgi.application'
+#WSGI_APPLICATION = 'expense_backend.wsgi.application'
+
+ASGI_APPLICATION = 'expense_backend.asgi.application'
 
 
 # Database
@@ -191,4 +195,14 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+}
+
+# Channels (WebSocket) Layer
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
 }

@@ -17,7 +17,7 @@ if (storedToken) {
   axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
 }
 
-// ✅ Set Auth Token (Login/Register)
+// ✅ Set Auth Token
 export const setAuthToken = (token) => {
   try {
     if (token) {
@@ -32,12 +32,13 @@ export const setAuthToken = (token) => {
   }
 };
 
-// ✅ Auth APIs
+// ✅ Login API
 export const loginUser = async (email, password) => {
   try {
     const response = await axiosInstance.post('/login/', { email, password });
-    setAuthToken(response.data.access); // Store token after login
-    localStorage.setItem('refreshToken', response.data.refresh); // Store refresh token
+    setAuthToken(response.data.access);
+    localStorage.setItem('refreshToken', response.data.refresh);
+    localStorage.setItem('user', JSON.stringify(response.data.user));
     return response.data;
   } catch (error) {
     console.error("Login error:", error);
@@ -45,6 +46,7 @@ export const loginUser = async (email, password) => {
   }
 };
 
+// ✅ Register API
 export const registerUser = async (userData) => {
   try {
     const response = await axiosInstance.post('/register/', userData);
@@ -55,19 +57,35 @@ export const registerUser = async (userData) => {
   }
 };
 
+// ✅ Logout API — sends refresh_token
 export const logoutUser = async () => {
   try {
-    const response = await axiosInstance.post('/logout/');
-    setAuthToken(null); // Clear token on logout
-    localStorage.removeItem('refreshToken'); // Remove refresh token on logout
-    return response.data;
+    const refreshToken = localStorage.getItem('refreshToken');
+    const accessToken = localStorage.getItem('jwtToken');
+
+    if (!refreshToken || !accessToken) {
+      throw new Error('Missing tokens');
+    }
+
+    await axios.post(`${BASE_URL}logout/`, {
+      refresh_token: refreshToken,
+    }, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    setAuthToken(null);
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
   } catch (error) {
     console.error("Logout error:", error);
-    throw error.response ? error.response.data : 'Logout failed, please try again';
+    throw error.response?.data || 'Logout failed';
   }
 };
 
-// 🔄 Token Refresh
+// ✅ Token Refresh
 export const attemptTokenRefresh = async () => {
   try {
     const refreshToken = localStorage.getItem('refreshToken');
@@ -83,24 +101,23 @@ export const attemptTokenRefresh = async () => {
     console.error("Token refresh error:", error);
     setAuthToken(null);
     localStorage.removeItem('refreshToken');
-    window.location.href = '/login'; // Redirect to login on token failure
+    window.location.href = '/login';
     return false;
   }
 };
 
 // 📦 EXPENSE APIs
-// ✅ GET all expenses (admin or user based)
+
 export const fetchExpenses = async () => {
   try {
     const response = await axiosInstance.get('/expenses/');
     return response.data;
   } catch (error) {
     console.error("Fetch expenses error:", error);
-    throw error.response ? error.response.data : 'Failed to fetch expenses. Please try again later';
+    throw error.response ? error.response.data : 'Failed to fetch expenses.';
   }
 };
 
-// ✅ POST new expense with optional file upload
 export const addExpense = async (data) => {
   try {
     const formData = new FormData();
@@ -112,62 +129,57 @@ export const addExpense = async (data) => {
 
     const response = await axiosInstance.post('/expenses/', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data', // Axios automatically sets this, but it's good practice to specify it here
+        'Content-Type': 'multipart/form-data',
       },
     });
 
     return response.data;
   } catch (error) {
     console.error("Add expense error:", error);
-    throw error.response ? error.response.data : 'Failed to add expense. Please try again later';
+    throw error.response ? error.response.data : 'Failed to add expense.';
   }
 };
 
-// ✅ PUT update an existing expense
 export const updateExpense = async (id, data) => {
   try {
     const response = await axiosInstance.put(`/expenses/${id}/`, data);
     return response.data;
   } catch (error) {
     console.error("Update expense error:", error);
-    throw error.response ? error.response.data : 'Failed to update expense. Please try again later';
+    throw error.response ? error.response.data : 'Failed to update expense.';
   }
 };
 
-// ✅ DELETE an expense
 export const deleteExpense = async (id) => {
   try {
     const response = await axiosInstance.delete(`/expenses/${id}/`);
     return response.data;
   } catch (error) {
     console.error("Delete expense error:", error);
-    throw error.response ? error.response.data : 'Failed to delete expense. Please try again later';
+    throw error.response ? error.response.data : 'Failed to delete expense.';
   }
 };
 
-// ✅ Fetch order items by date and user
 export const fetchOrderItemsByDate = async (date, user) => {
   try {
     const response = await axiosInstance.get(`/orders/items_by_date/?date=${date}&user=${user}`);
     return response.data;
   } catch (error) {
     console.error("Fetch order items error:", error);
-    throw error.response ? error.response.data : 'Failed to fetch order items. Please try again later';
+    throw error.response ? error.response.data : 'Failed to fetch order items.';
   }
 };
 
-// ✅ DELETE all orders for a specific date and user
 export const deleteOrdersByDate = async (date, user) => {
   try {
     const response = await axiosInstance.delete(`/orders/${date}/${user}`);
     return response.data;
   } catch (error) {
-    console.error('Error deleting orders:', error);
-    throw error.response ? error.response.data : 'Failed to delete orders. Please try again later';
+    console.error('Delete orders error:', error);
+    throw error.response ? error.response.data : 'Failed to delete orders.';
   }
 };
 
-// ✅ Get grouped orders
 export const getGroupedOrders = async (page, pageSize, filters) => {
   try {
     const params = new URLSearchParams({
@@ -180,42 +192,33 @@ export const getGroupedOrders = async (page, pageSize, filters) => {
     return response.data;
   } catch (error) {
     console.error('Get grouped orders error:', error);
-    throw error.response ? error.response.data : 'Failed to fetch grouped orders. Please try again later';
+    throw error.response ? error.response.data : 'Failed to fetch grouped orders.';
   }
 };
 
-
-// ✅ Fetch available dates (example)
 export const getAvailableDates = async () => {
   try {
     const response = await axiosInstance.get('/orders/available-dates/');
-
     return response.data;
   } catch (error) {
     console.error("Fetch available dates error:", error);
-    throw error.response ? error.response.data : 'Failed to fetch available dates. Please try again later';
+    throw error.response ? error.response.data : 'Failed to fetch available dates.';
   }
 };
 
-// Global error handling for axios responses
+// 🔄 Axios interceptor for auto token refresh
 axiosInstance.interceptors.response.use(
   response => response,
   async (error) => {
-    if (error.response) {
-      // Check for 401 (Unauthorized) and attempt to refresh token
-      if (error.response.status === 401) {
-        const refreshSuccess = await attemptTokenRefresh();
-        if (refreshSuccess) {
-          // Retry the original request with the new token
-          const originalRequest = error.config;
-          originalRequest.headers['Authorization'] = `Bearer ${localStorage.getItem('jwtToken')}`;
-          return axiosInstance(originalRequest);
-        } else {
-          window.location.href = '/login'; // Redirect to login on token failure
-        }
+    if (error.response?.status === 401) {
+      const refreshSuccess = await attemptTokenRefresh();
+      if (refreshSuccess) {
+        const originalRequest = error.config;
+        originalRequest.headers['Authorization'] = `Bearer ${localStorage.getItem('jwtToken')}`;
+        return axiosInstance(originalRequest);
+      } else {
+        window.location.href = '/login';
       }
-    } else {
-      console.error('API error: ', error.message);
     }
     return Promise.reject(error);
   }

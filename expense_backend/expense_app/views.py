@@ -15,6 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import parser_classes  # ✅ this is the missing one
 from django.utils.timezone import datetime,now,make_aware
+from rest_framework import viewsets
 from datetime import date
 import json
 
@@ -22,10 +23,13 @@ from .models import *
 from .serializers import *
 from .permissions import *
 
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from django.utils import timezone
+from expense_app.utils import send_realtime_notification
+
 from dateutil import parser
 from .serializers import MyTokenObtainPairSerializer
-
-
 
 
 # Authentication View
@@ -276,6 +280,23 @@ def item_price_history(request, item_id):
     except Item.DoesNotExist:
         return Response({'error': 'Item not found'}, status=status.HTTP_404_NOT_FOUND)
 
+class ItemViewSet(viewsets.ModelViewSet):
+    queryset = Item.objects.all()
+    serializer_class = ItemSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_update(self, serializer):
+        old_instance = self.get_object()
+        old_price = old_instance.item_price
+        updated_instance = serializer.save()
+
+        if old_price != updated_instance.item_price:
+            ItemPriceHistory.objects.create(
+                item=updated_instance,
+                price=old_price,
+                date=timezone.now()
+            )
+
 # Expense Views
 
 @api_view(['GET', 'POST'])
@@ -289,7 +310,6 @@ def expense_list_create(request):
     elif request.method == 'POST':
         serializer = ExpenseSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
-            # Return validation errors if any
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -303,15 +323,18 @@ def expense_list_create(request):
                     Notification.objects.create(
                         user=request.user,
                         recipient=admin,
-                        message=(
-                            f"{request.user.username} submitted an expense "
-                            f"₹{expense.amount} on {expense.date}"
-                        ),
+                        message=f"{request.user.username} submitted an expense ₹{expense.amount} on {expense.date}",
                         is_read=False
                     )
 
+                    # ✅ Send real-time notification
+                    send_realtime_notification(
+                        admin,
+                        f"{request.user.username} submitted an expense ₹{expense.amount} on {expense.date}"
+                    )
+
                 # 3) Create a corresponding Order
-                Order.objects.create(
+                order = Order.objects.create(
                     created_user=request.user,
                     calculated_price=expense.amount
                 )
@@ -329,27 +352,20 @@ def expense_list_create(request):
                 TransactionOrder.objects.create(
                     transaction=transaction,
                     expense=expense,
-                    order_id=Order.objects.get(created_user=request.user, calculated_price=expense.amount)
+                    order_id=order
                 )
 
-                # 6) Save uploaded bill file (if any) into Expense.bill
+                # 6) Save uploaded bill file (if any)
                 if 'bill' in request.FILES:
                     expense.bill = request.FILES['bill']
                     expense.save()
 
-                # 7) Return the fully serialized expense (including bill_url)
-                out_serializer = ExpenseSerializer(
-                    expense,
-                    context={'request': request}
-                )
+                # 7) Return the full expense with bill_url
+                out_serializer = ExpenseSerializer(expense, context={'request': request})
                 return Response(out_serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as exc:
-            # Catch any unexpected errors
-            return Response(
-                {"error": str(exc)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
@@ -708,9 +724,14 @@ def transaction_detail(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def notification_list(request):
-    notifications = Notification.objects.filter(recipient=request.user)
+    notifications = Notification.objects.filter(recipient=request.user).order_by('-created_date')
     serializer = NotificationSerializer(notifications, many=True)
-    return Response(serializer.data)
+    unread_count = notifications.filter(is_read=False).count()
+
+    return Response({
+        "unread_count": unread_count,
+        "notifications": serializer.data  # ✅ send as list under key
+    })
 
 @api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated])
@@ -725,6 +746,27 @@ def notification_detail(request, pk):
         notification.is_read = True
         notification.save()
         return Response({'status': 'notification marked as read'})
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def mark_all_notifications_read(request):
+    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    return Response({"detail": "All notifications marked as read"})
+
+def send_realtime_notification(user, message):
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"user_{user.id}",
+        {
+            "type": "send_notification",
+            "notification": {
+                "message": message,
+                "created_at": str(timezone.now()),
+            }
+        }
+    )
+
+
 
 # Daily total
 

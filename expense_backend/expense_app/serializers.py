@@ -53,9 +53,11 @@ class ItemSerializer(serializers.ModelSerializer):
 
 
 class ItemPriceHistorySerializer(serializers.ModelSerializer):
+    item_name = serializers.CharField(source='item.item_name', read_only=True)
+
     class Meta:
         model = ItemPriceHistory
-        fields = '__all__'
+        fields = ['item_name', 'price', 'date']
 
 
 class ExpenseSerializer(serializers.ModelSerializer):
@@ -166,11 +168,12 @@ class TransactionOrderSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    created_at = serializers.DateTimeField(source='created_date')  # ✅ Alias created_date to created_at
+
     class Meta:
         model = Notification
-        fields = '__all__'
-        read_only_fields = ['user', 'created_date']
-
+        fields = ['id', 'message', 'is_read', 'created_at']  # ✅ Keep only needed fields
+        read_only_fields = ['user', 'created_at']
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
