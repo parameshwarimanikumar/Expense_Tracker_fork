@@ -1,0 +1,210 @@
+[
+{
+  "model": "expense_app.expense",
+  "pk": 3,
+  "fields": {
+    "user": 1,
+    "date": "2025-04-24",
+    "description": "cookie",
+    "expense_type": "Product",
+    "bill": "",
+    "amount": 100.0,
+    "is_verified": true,
+    "is_refunded": true,
+    "created_date": "2025-04-25T10:18:23Z",
+    "updated_date": "2025-05-15T10:08:29.328Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 4,
+  "fields": {
+    "user": 1,
+    "date": "2025-04-24",
+    "description": "cookie",
+    "expense_type": "regular",
+    "bill": "bills/user_1/Avatar.png",
+    "amount": 210.0,
+    "is_verified": true,
+    "is_refunded": true,
+    "created_date": "2025-04-25T10:18:54Z",
+    "updated_date": "2025-04-29T11:51:51.907Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 5,
+  "fields": {
+    "user": 1,
+    "date": "2025-04-24",
+    "description": "snack",
+    "expense_type": "regular",
+    "bill": "bills/user_1/OIP_1_Sq6Ci1e.jpeg",
+    "amount": 110.0,
+    "is_verified": true,
+    "is_refunded": true,
+    "created_date": "2025-04-25T10:19:13Z",
+    "updated_date": "2025-05-29T05:00:11.192Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 6,
+  "fields": {
+    "user": 1,
+    "date": "2025-04-22",
+    "description": "coffee with client",
+    "expense_type": "regular",
+    "bill": "bills/user_1/OIP_1_l08Zv85.jpeg",
+    "amount": 200.0,
+    "is_verified": true,
+    "is_refunded": true,
+    "created_date": "2025-04-25T10:23:55.221Z",
+    "updated_date": "2025-06-18T07:37:02.452Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 12,
+  "fields": {
+    "user": 1,
+    "date": "2025-04-08",
+    "description": "laptop service",
+    "expense_type": "regular",
+    "bill": "",
+    "amount": 234.0,
+    "is_verified": false,
+    "is_refunded": false,
+    "created_date": "2025-04-28T08:31:11.700Z",
+    "updated_date": "2025-04-29T10:56:09.591Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 15,
+  "fields": {
+    "user": 1,
+    "date": "2025-04-27",
+    "description": "Battery and charger",
+    "expense_type": "regular",
+    "bill": "bills/user_1/OIP_1_OvNcS2W.jpeg",
+    "amount": 312.0,
+    "is_verified": false,
+    "is_refunded": false,
+    "created_date": "2025-04-29T10:48:13.855Z",
+    "updated_date": "2025-05-05T11:05:35.807Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 16,
+  "fields": {
+    "user": 1,
+    "date": "2025-04-28",
+    "description": "doormats",
+    "expense_type": "regular",
+    "bill": "bills/user_1/brillersys.png",
+    "amount": 153.0,
+    "is_verified": false,
+    "is_refunded": false,
+    "created_date": "2025-04-29T11:50:19.762Z",
+    "updated_date": "2025-04-30T05:01:54.977Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 17,
+  "fields": {
+    "user": 1,
+    "date": "2025-04-21",
+    "description": "tea",
+    "expense_type": "regular",
+    "bill": "bills/user_1/OIP_1_oPgOSdg.jpeg",
+    "amount": 239.0,
+    "is_verified": true,
+    "is_refunded": true,
+    "created_date": "2025-04-30T05:02:58Z",
+    "updated_date": "2025-04-30T05:03:56.053Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 50,
+  "fields": {
+    "user": 2,
+    "date": "2025-05-03",
+    "description": "tea",
+    "expense_type": "regular",
+    "bill": "bills/user_2/OIP_1_rFz83Zy.jpeg",
+    "amount": 139.0,
+    "is_verified": false,
+    "is_refunded": false,
+    "created_date": "2025-05-05T06:05:42.372Z",
+    "updated_date": "2025-05-05T06:05:42.440Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 51,
+  "fields": {
+    "user": 3,
+    "date": "2025-05-05",
+    "description": "coffee",
+    "expense_type": "regular",
+    "bill": "bills/user_3/Currency_pEotCyU.png",
+    "amount": 152.0,
+    "is_verified": false,
+    "is_refunded": false,
+    "created_date": "2025-05-06T05:44:00.574Z",
+    "updated_date": "2025-05-21T05:50:07.869Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 52,
+  "fields": {
+    "user": 2,
+    "date": "2025-05-13",
+    "description": "ice creem",
+    "expense_type": "regular",
+    "bill": "bills/user_2/urls.py",
+    "amount": 100.0,
+    "is_verified": false,
+    "is_refunded": false,
+    "created_date": "2025-05-21T08:58:00.244Z",
+    "updated_date": "2025-05-22T09:17:40.062Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 53,
+  "fields": {
+    "user": 1,
+    "date": "2025-06-04",
+    "description": "tea",
+    "expense_type": "regular",
+    "bill": "bills/user_1/OIP_1_MID1LZY.jpeg",
+    "amount": 12.0,
+    "is_verified": false,
+    "is_refunded": false,
+    "created_date": "2025-06-05T10:43:43.924Z",
+    "updated_date": "2025-06-05T10:46:23.710Z"
+  }
+},
+{
+  "model": "expense_app.expense",
+  "pk": 54,
+  "fields": {
+    "user": 3,
+    "date": "2025-06-10",
+    "description": "snacks",
+    "expense_type": "regular",
+    "bill": "bills/user_3/KCNC_GST_Invoice_646_Sri_Kara_28062024.pdf",
+    "amount": 20.0,
+    "is_verified": true,
+    "is_refunded": true,
+    "created_date": "2025-06-10T11:01:27.128Z",
+    "updated_date": "2025-06-18T11:41:28.126Z"
+  }
+}
+]

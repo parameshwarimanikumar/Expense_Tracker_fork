@@ -110,8 +110,8 @@ def update_order_total(sender, instance, **kwargs):
 class Expense(models.Model):
     EXPENSE_TYPE_CHOICES = [
         ("Product", "Product"),
-        ("Travel", "Travel"),
         ("Food", "Food"),
+        ("Service", "Service"),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)

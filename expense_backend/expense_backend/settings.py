@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     #app
     'expense_app',
     'channels',                     # 👈 ADD THIS
-    'channels_redis', 
+    #'channels_redis', 
 ]
 
 MIDDLEWARE = [
@@ -82,9 +82,9 @@ TEMPLATES = [
     },
 ]
 
-#WSGI_APPLICATION = 'expense_backend.wsgi.application'
+WSGI_APPLICATION = 'expense_backend.wsgi.application'
 
-ASGI_APPLICATION = 'expense_backend.asgi.application'
+#ASGI_APPLICATION = 'expense_backend.asgi.application'
 
 
 # Database
@@ -206,3 +206,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+
+

@@ -139,21 +139,20 @@ const ExpenseTable = () => {
     formData.append("description", expenseData.description);
     formData.append("expense_type", expenseData.type);
     formData.append("amount", expenseData.amount);
-
     if (expenseData.bill) {
-      console.log("Bill Data being appended:", expenseData.bill); // Check if bill is appended
-      formData.append("bill", expenseData.bill); // appending the file correctly
+      formData.append("bill", expenseData.bill); // ✅ Append only if bill exists
     }
 
     try {
       const response = await axios({
-        method: editingExpense ? "put" : "post", // Use PUT for editing
+        method: editingExpense ? "put" : "post",
         url: editingExpense
           ? `http://localhost:8000/api/expenses/${editingExpense.id}/`
           : "http://localhost:8000/api/expenses/",
         data: formData,
         headers: {
           Authorization: `Bearer ${token}`,
+          // ✅ Don't manually set Content-Type for FormData
         },
       });
 
@@ -172,7 +171,10 @@ const ExpenseTable = () => {
       setShowExpense(false);
       alert("Expense submitted successfully.");
     } catch (error) {
-      console.error("Error submitting expense:", error.response || error);
+      console.error(
+        "Error submitting expense:",
+        error.response?.data || error.message
+      );
       alert("Failed to submit expense.");
     }
   };
@@ -308,7 +310,7 @@ const ExpenseTable = () => {
                 <option value="">All</option>
                 <option value="Product">Product</option>
                 <option value="Food">Food</option>
-                <option value="Travel">Travel</option>
+                <option value="Service">Service</option>
               </select>
             </div>
             <div>
@@ -372,7 +374,7 @@ const ExpenseTable = () => {
             </h3>
 
             {/* Expense Form */}
-            <form onSubmit={handleExpenseSubmit}>
+            <form onSubmit={handleExpenseSubmit} encType="multipart/form-data">
               {/* Date Field */}
               <div className="mb-4">
                 <label className="block text-gray-700">Date</label>
@@ -432,7 +434,7 @@ const ExpenseTable = () => {
                   <option value="">Select Type</option>
                   <option value="Product">Product</option>
                   <option value="Food">Food</option>
-                  <option value="Travel">Travel</option>
+                  <option value="Service">Service</option> {/* ✅ Correct */}
                 </select>
               </div>
 
