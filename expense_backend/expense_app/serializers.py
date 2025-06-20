@@ -5,8 +5,6 @@ from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import AuthenticationFailed
 
 
-
-
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Role
@@ -60,19 +58,37 @@ class ItemPriceHistorySerializer(serializers.ModelSerializer):
         fields = ['item_name', 'price', 'date']
 
 
+# ✅ Show full user details in Expense
+class ExpenseUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'name', 'email']
+
+
 class ExpenseSerializer(serializers.ModelSerializer):
+    user = ExpenseUserSerializer(read_only=True)
     bill_url = serializers.SerializerMethodField()
+    total_count = serializers.SerializerMethodField()
+    total_amount = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Expense
         fields = [
             'id', 'user', 'date', 'description', 'expense_type',
             'bill', 'bill_url', 'amount', 'is_verified', 'is_refunded',
-            'created_date', 'updated_date'
+            'created_date', 'updated_date', 'total_count', 'total_amount'
         ]
         read_only_fields = [
             'user', 'is_verified', 'is_refunded', 'created_date', 'updated_date'
         ]
+    def get_total_count(self, obj):
+        return 1  # Or adjust logic based on how you're counting
+
+    def get_total_amount(self, obj):
+        return obj.amount or 0    
+        
+        
 
     def get_bill_url(self, obj):
         request = self.context.get('request')
@@ -108,7 +124,7 @@ class BillSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())  # Accept item ID in input
+    item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())
     added_date = serializers.DateTimeField(
         format="%Y-%m-%dT%H:%M:%S.%fZ",
         input_formats=[
@@ -134,7 +150,6 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = ['id', 'created_user', 'calculated_price', 'created_date', 'order_items']
         read_only_fields = ['created_user', 'calculated_price', 'created_date']
 
-
     def create(self, validated_data):
         order_items_data = validated_data.pop('order_items')
         user = self.context['request'].user
@@ -149,7 +164,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
         order.calculated_price = total_price
         order.save()
-
         return order
 
 
@@ -168,12 +182,13 @@ class TransactionOrderSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-    created_at = serializers.DateTimeField(source='created_date')  # ✅ Alias created_date to created_at
+    created_at = serializers.DateTimeField(source='created_date')
 
     class Meta:
         model = Notification
-        fields = ['id', 'message', 'is_read', 'created_at']  # ✅ Keep only needed fields
+        fields = ['id', 'message', 'is_read', 'created_at']
         read_only_fields = ['user', 'created_at']
+
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -187,7 +202,6 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError({"detail": "Invalid email or password."})
 
         refresh = self.get_token(self.user)
-
         user = self.user
         request = self.context.get('request')
 
@@ -197,7 +211,6 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             user.profile_picture.url if user.profile_picture else ''
         )
 
-        # ✅ Return role nested in user
         data['user'] = {
             'id': user.id,
             'email': user.email,

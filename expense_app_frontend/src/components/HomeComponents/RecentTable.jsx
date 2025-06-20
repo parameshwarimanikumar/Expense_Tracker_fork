@@ -21,7 +21,7 @@ const RecentTable = () => {
     setLoading(true);
     try {
       const data = await fetchExpenses();
-      setRecentData(data.slice(0, 10)); // Show latest 10 entries
+      setRecentData(data.slice(0, 10));
     } catch (error) {
       console.error("Error fetching recent data:", error);
     } finally {
@@ -92,121 +92,131 @@ const RecentTable = () => {
   return (
     <div className="flex flex-col lg:flex-row gap-4 w-full">
       {/* Recent Entries Table */}
-      <div className="bg-white rounded-xl p-4 md:p-6 flex-1 overflow-x-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg md:text-xl font-bold text-[#124451]">
-            Recently Added
-          </h2>
-        </div>
+      <div className="bg-white rounded-xl p-4 md:p-6 flex-1 overflow-x-auto shadow">
+        <h2 className="text-lg md:text-xl font-bold text-[#124451] mb-4">
+          Recently Added
+        </h2>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="text-gray-500 text-left border-b border-gray-100 text-[14px] sticky top-0 bg-white">
-                <th className="p-2 md:p-3 font-medium">Date</th>
-                <th className="p-2 md:p-3 font-medium">User</th>
-                <th className="p-2 md:p-3 text-center font-medium">Count</th>
-                <th className="p-2 md:p-3 text-center font-medium">Amount</th>
-                <th className="p-2 md:p-3 text-center font-medium">Actions</th>
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="text-gray-500 text-left border-b border-gray-200 bg-gray-50">
+              <th className="p-2 md:p-3">Date</th>
+              <th className="p-2 md:p-3">User</th>
+              <th className="p-2 md:p-3 text-center">Count</th>
+              <th className="p-2 md:p-3 text-center">Amount</th>
+              <th className="p-2 md:p-3 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="5" className="text-center p-4">
+                  Loading...
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="5" className="text-center p-4">
-                    Loading...
-                  </td>
-                </tr>
-              ) : recentData.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="text-center p-4">
-                    No recent entries found
-                  </td>
-                </tr>
-              ) : (
-                recentData.map((data, index) => {
-                  const isToday = data.date === today;
-                  const isRefunded = data.is_refunded;
-                  const isCurrentUser = data.user === currentUser?.username;
+            ) : recentData.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="text-center p-4">
+                  No recent entries found
+                </td>
+              </tr>
+            ) : (
+              recentData.map((data, index) => {
+                const isToday = data.date === today;
+                const isRefunded = data.is_refunded;
+                const isCurrentUser = data.user === currentUser?.username;
 
-                  const canEdit = isToday && isCurrentUser && !isRefunded;
-                  const canDelete = isToday;
+                const canEdit = isToday && isCurrentUser && !isRefunded;
+                const canDelete = isToday;
 
-                  // Unique key and tooltip IDs
-                  const safeKey =
-                    data.order_id ??
-                    data.id ??
-                    `${data.user || "unknown"}-${data.date || "nodate"}-${index}`;
+                const safeKey =
+                  data.order_id ??
+                  data.id ??
+                  `${data.user || "unknown"}-${data.date || "nodate"}-${index}`;
 
-                  const editTooltipId = `edit-tooltip-${safeKey}`;
-                  const deleteTooltipId = `delete-tooltip-${safeKey}`;
+                const editTooltipId = `edit-tooltip-${safeKey}`;
+                const deleteTooltipId = `delete-tooltip-${safeKey}`;
 
-                  return (
-                    <tr
-                      key={safeKey}
-                      className="text-sm font-semibold border-b border-gray-100"
-                    >
-                      <td className="p-2 md:p-3">
-                        {dayjs(data.date).format("MMM D, YYYY")}
-                      </td>
-                      <td className="p-2 md:p-3">{data.user}</td>
-                      <td className="p-2 md:p-3 text-center">{data.total_count}</td>
-                      <td className="p-2 md:p-3 text-center">
-                        ₹
-                        {(data.total_amount && !isNaN(data.total_amount)
-                          ? data.total_amount
-                          : 0
-                        ).toFixed(2)}
-                      </td>
-                      <td className="p-2 md:p-3 flex justify-center gap-4">
+                return (
+                  <tr
+                    key={safeKey}
+                    className="border-b border-gray-100 hover:bg-gray-50"
+                  >
+                    <td className="p-2 md:p-3">
+                      {dayjs(data.date).format("MMM D, YYYY")}
+                    </td>
+                    <td className="p-2 md:p-3">
+                      {data.user?.name || data.user?.username || "Unknown"}
+                    </td>
+
+                    <td className="p-2 md:p-3 text-center">
+                      {data.total_count || 1}
+                    </td>
+                    <td className="p-2 md:p-3 text-center">
+                      ₹{(data.total_amount ?? data.amount ?? 0).toFixed(2)}
+                    </td>
+
+                    <td className="p-2 md:p-3 text-center">
+                      <div className="flex justify-center gap-3">
                         <button
                           onClick={() => handleEdit(data)}
                           disabled={!canEdit}
                           data-tooltip-id={editTooltipId}
                           data-tooltip-content={
-                            canEdit
-                              ? ""
-                              : isRefunded
-                              ? "Refunded entries cannot be edited"
-                              : !isToday
-                              ? "Only today's entries can be edited"
-                              : !isCurrentUser
-                              ? "You can only edit your own entries"
+                            !canEdit
+                              ? isRefunded
+                                ? "Refunded entries cannot be edited"
+                                : !isToday
+                                ? "Only today's entries can be edited"
+                                : "You can only edit your own entries"
                               : ""
                           }
-                          className={`${
-                            !canEdit ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                          className={`transition ${
+                            canEdit
+                              ? "hover:scale-110"
+                              : "cursor-not-allowed opacity-40"
                           }`}
                         >
-                          <FaEdit size={14} color={canEdit ? "#16A63D" : "gray"} />
+                          <FaEdit
+                            size={16}
+                            color={canEdit ? "#16A63D" : "gray"}
+                          />
+                          <Tooltip id={editTooltipId} />
                         </button>
 
                         <button
                           onClick={() => handleDelete(data)}
                           disabled={!canDelete}
                           data-tooltip-id={deleteTooltipId}
-                          data-tooltip-content={canDelete ? "" : "Only today's entries can be deleted"}
-                          className={`${
-                            !canDelete ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                          data-tooltip-content={
+                            canDelete
+                              ? ""
+                              : "Only today's entries can be deleted"
+                          }
+                          className={`transition ${
+                            canDelete
+                              ? "hover:scale-110"
+                              : "cursor-not-allowed opacity-40"
                           }`}
                         >
-                          <FaTrash size={14} color={canDelete ? "red" : "gray"} />
+                          <FaTrash
+                            size={16}
+                            color={canDelete ? "red" : "gray"}
+                          />
+                          <Tooltip id={deleteTooltipId} />
                         </button>
-
-                        <Tooltip id={editTooltipId} />
-                        <Tooltip id={deleteTooltipId} />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Edit/Add Item Section */}
-      <div className="bg-white rounded-xl p-4 md:p-6 flex-1">
+      {/* Edit/Add Section */}
+      <div className="bg-white rounded-xl p-4 md:p-6 flex-1 shadow">
         {isEditing ? (
           <AddItemTable
             editMode={true}

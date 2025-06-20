@@ -300,7 +300,10 @@ const ExpenseDashboardTailwind = () => {
                   <td className="py-3 text-center">
                     {dayjs(exp.date).format("DD/MM/YYYY")}
                   </td>
-                  <td className="py-3 text-center">{exp.user || "Unknown"}</td>
+                  <td className="py-3 text-center">
+                    {exp.user?.name || exp.user?.username || "Unknown"}
+                  </td>
+
                   <td className="py-3 text-center">
                     {exp.description || "N/A"}
                   </td>
