@@ -4,14 +4,16 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { getGroupedOrders } from "../../api_service/api";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import AddItem from "../UpdateItem/Additem";
 
-const DataTable = () => {
+const RegularExpense = () => {
   const [groupedItems, setGroupedItems] = useState({});
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalPrice, setTotalPrice] = useState(0);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [showAddItem, setShowAddItem] = useState(false);
   const [filters, setFilters] = useState({
     type: "",
     isVerified: "",
@@ -21,21 +23,24 @@ const DataTable = () => {
 
   const PAGE_SIZE = 10;
 
-  const fetchData = useCallback(async (page = 1, appliedFilters = filters) => {
-    setLoading(true);
-    try {
-      const data = await getGroupedOrders(page, PAGE_SIZE, appliedFilters);
-      setGroupedItems(data.results);
-      setTotalPrice(data.total_price);
-      setTotalPages(data.total_pages);
-      setCurrentPage(page);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      alert("Failed to fetch grouped orders. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
+  const fetchData = useCallback(
+    async (page = 1, appliedFilters = filters) => {
+      setLoading(true);
+      try {
+        const data = await getGroupedOrders(page, PAGE_SIZE, appliedFilters);
+        setGroupedItems(data.results);
+        setTotalPrice(data.total_price);
+        setTotalPages(data.total_pages);
+        setCurrentPage(page);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        alert("Failed to fetch grouped orders. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters]
+  );
 
   useEffect(() => {
     fetchData();
@@ -49,7 +54,10 @@ const DataTable = () => {
 
   const formatDate = (dateString) => {
     const d = new Date(dateString);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
   };
 
   const downloadExcel = () => {
@@ -79,9 +87,11 @@ const DataTable = () => {
     const worksheet = XLSX.utils.aoa_to_sheet(allRows);
 
     worksheet["!cols"] = allRows[0].map((_, colIndex) => ({
-      wch: Math.max(...allRows.map((row) =>
-        row[colIndex] ? row[colIndex].toString().length + 2 : 10
-      )),
+      wch: Math.max(
+        ...allRows.map((row) =>
+          row[colIndex] ? row[colIndex].toString().length + 2 : 10
+        )
+      ),
     }));
 
     const range = XLSX.utils.decode_range(worksheet["!ref"]);
@@ -128,7 +138,9 @@ const DataTable = () => {
     return (
       <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
         <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-          <h2 className="text-xl font-bold text-[#124451] mb-4">Filter Orders</h2>
+          <h2 className="text-xl font-bold text-[#124451] mb-4">
+            Filter Orders
+          </h2>
           <div className="mb-4">
             <label className="block mb-1 text-sm font-semibold">Type</label>
             <select
@@ -143,7 +155,9 @@ const DataTable = () => {
             </select>
           </div>
           <div className="mb-4">
-            <label className="block mb-1 text-sm font-semibold">Verified Status</label>
+            <label className="block mb-1 text-sm font-semibold">
+              Verified Status
+            </label>
             <select
               value={isVerified}
               onChange={(e) => setIsVerified(e.target.value)}
@@ -155,7 +169,9 @@ const DataTable = () => {
             </select>
           </div>
           <div className="mb-4">
-            <label className="block mb-1 text-sm font-semibold">Start Date</label>
+            <label className="block mb-1 text-sm font-semibold">
+              Start Date
+            </label>
             <input
               type="date"
               value={startDate || ""}
@@ -195,11 +211,13 @@ const DataTable = () => {
     <div className="p-4 md:p-6 bg-white rounded-lg min-h-screen relative">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <h2 className="text-lg md:text-xl font-bold text-[#124451]">
-          {loading ? "Loading..." : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
+          {loading
+            ? "Loading..."
+            : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
         </h2>
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <button
-            className="bg-gray-200 text-[#124451] px-3 py-1 rounded-full text-sm flex items-center gap-2"
+            className="bg-[#124451] text-white px-3 py-1 text-sm md:px-4 rounded-full flex items-center gap-1"
             onClick={() => setIsFilterOpen(true)}
           >
             <FontAwesomeIcon icon={faFilter} />
@@ -207,9 +225,15 @@ const DataTable = () => {
           </button>
           <button
             className="bg-[#124451] text-white px-3 py-1 text-sm md:px-4 rounded-full flex items-center gap-1"
+            onClick={() => setIsFilterOpen(true)}
+          >
+            + Add Item
+          </button>
+          <button
+            className="bg-[#124451] text-white px-3 py-1 text-sm md:px-4 rounded-full flex items-center gap-1"
             onClick={downloadExcel}
           >
-            <FontAwesomeIcon icon={faFileExcel} className="text-green-600" />
+            <FontAwesomeIcon icon={faFileExcel} className="text-green-300" />
             <span className="hidden sm:inline">Download Excel</span>
           </button>
         </div>
@@ -233,19 +257,34 @@ const DataTable = () => {
             </div>
             {Object.keys(groupedItems).map((date, idx) => {
               const items = groupedItems[date];
-              const totalPerRow = items.reduce((sum, item) => sum + item.count * item.price, 0);
+              const totalPerRow = items.reduce(
+                (sum, item) => sum + item.count * item.price,
+                0
+              );
               return (
-                <div key={date} className={`${idx % 2 === 0 ? "bg-gray-100" : "bg-white"} p-4 grid grid-cols-6`}>
+                <div
+                  key={date}
+                  className={`${
+                    idx % 2 === 0 ? "bg-gray-100" : "bg-white"
+                  } p-4 grid grid-cols-6`}
+                >
                   <div className="row-span-full flex items-center font-semibold">
                     {formatDate(date)}
                   </div>
                   <div className="col-span-4">
                     {items.map((item, index) => (
-                      <div key={index} className="grid grid-cols-4 text-sm text-gray-800 py-1">
+                      <div
+                        key={index}
+                        className="grid grid-cols-4 text-sm text-gray-800 py-1"
+                      >
                         <div>{item.item_name}</div>
                         <div className="text-center">{item.count}</div>
-                        <div className="text-center">₹{item.price.toFixed(2)}</div>
-                        <div className="text-center">₹{(item.count * item.price).toFixed(2)}</div>
+                        <div className="text-center">
+                          ₹{item.price.toFixed(2)}
+                        </div>
+                        <div className="text-center">
+                          ₹{(item.count * item.price).toFixed(2)}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -261,18 +300,31 @@ const DataTable = () => {
           <div className="md:hidden space-y-4">
             {Object.keys(groupedItems).map((date, idx) => {
               const items = groupedItems[date];
-              const totalPerRow = items.reduce((sum, item) => sum + item.count * item.price, 0);
+              const totalPerRow = items.reduce(
+                (sum, item) => sum + item.count * item.price,
+                0
+              );
               return (
-                <div key={date} className={`${idx % 2 === 0 ? "bg-gray-100" : "bg-white"} p-4 rounded-lg shadow-sm`}>
+                <div
+                  key={date}
+                  className={`${
+                    idx % 2 === 0 ? "bg-gray-100" : "bg-white"
+                  } p-4 rounded-lg shadow-sm`}
+                >
                   <div className="font-semibold text-[#124451] mb-3">
                     {formatDate(date)}
                   </div>
                   {items.map((item, index) => (
-                    <div key={index} className="flex justify-between mb-2 text-sm flex-wrap">
+                    <div
+                      key={index}
+                      className="flex justify-between mb-2 text-sm flex-wrap"
+                    >
                       <span>{item.item_name}</span>
                       <span>Count: {item.count}</span>
                       <span>₹{item.price.toFixed(2)}</span>
-                      <span>Total: ₹{(item.count * item.price).toFixed(2)}</span>
+                      <span>
+                        Total: ₹{(item.count * item.price).toFixed(2)}
+                      </span>
                     </div>
                   ))}
                   <div className="font-semibold text-center mt-2 border-t pt-2">
@@ -318,8 +370,27 @@ const DataTable = () => {
           filters={filters}
         />
       )}
+
+      {showAddItem && (
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative">
+            <button
+              onClick={() => setShowAddItem(false)}
+              className="absolute top-3 right-4 text-gray-500 hover:text-black text-2xl"
+            >
+              ×
+            </button>
+            <AddItem
+              onClose={() => {
+                setShowAddItem(false);
+                fetchData(); // Refresh list after adding item
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default DataTable;
+export default RegularExpense;
