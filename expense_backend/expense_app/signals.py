@@ -16,7 +16,6 @@ def track_price_change(sender, instance, **kwargs):
     if original.item_price != instance.item_price:
         ItemPriceHistory.objects.create(
             item=instance,
-            item_name=original.item_name,
-            item_price=original.item_price,
-            changed_at=timezone.now()
+            price=original.item_price,  # ✅ use correct field name
+            date=timezone.now()         # ✅ use correct field name
         )
