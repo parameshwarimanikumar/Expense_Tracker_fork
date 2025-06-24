@@ -34,9 +34,12 @@ const OtherExpense = () => {
           return;
         }
 
-        const response = await axios.get("http://localhost:8000/api/expenses/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await axios.get(
+          "http://localhost:8000/api/expenses/",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         setExpenses(response.data);
       } catch (error) {
@@ -148,7 +151,9 @@ const OtherExpense = () => {
     <div className="p-6 bg-white rounded-lg">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Total: ₹ {totalAmount.toFixed(2)}</h2>
+        <h2 className="text-xl font-bold text-gray-900">
+          Total: ₹ {totalAmount.toFixed(2)}
+        </h2>
         <div className="flex gap-2">
           <button
             className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-2"
@@ -175,7 +180,9 @@ const OtherExpense = () => {
               <select
                 name="type"
                 value={filters.type}
-                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, type: e.target.value })
+                }
                 className="w-full border p-2 rounded"
               >
                 <option value="">All</option>
@@ -222,7 +229,10 @@ const OtherExpense = () => {
               />
             </div>
             <div className="flex justify-between mt-4">
-              <button className="bg-gray-300 px-4 py-2 rounded" onClick={resetFilters}>
+              <button
+                className="bg-gray-300 px-4 py-2 rounded"
+                onClick={resetFilters}
+              >
                 Reset
               </button>
               <button
@@ -253,18 +263,29 @@ const OtherExpense = () => {
           </thead>
           <tbody className="text-gray-800 text-sm">
             {currentExpenses.map((exp, i) => (
-              <tr key={exp.id} className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+              <tr
+                key={exp.id}
+                className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}
+              >
                 <td className="p-3">{indexOfFirst + i + 1}</td>
                 <td className="p-3">{dayjs(exp.date).format("DD/MM/YYYY")}</td>
                 <td className="p-3">{exp.description}</td>
                 <td className="p-3">{exp.expense_type}</td>
                 <td className="p-3">
                   {exp.bill ? (
-                    <span className="text-green-600">Uploaded</span>
+                    <a
+                      href={exp.bill}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      View Bill
+                    </a>
                   ) : (
                     <span className="text-gray-500">N/A</span>
                   )}
                 </td>
+
                 <td className="p-3">₹ {parseFloat(exp.amount).toFixed(2)}</td>
                 <td className="p-3">
                   <button
@@ -309,28 +330,30 @@ const OtherExpense = () => {
         >
           <FaChevronLeft />
         </button>
-        {Array.from({ length: Math.ceil(finalExpenses.length / itemsPerPage) }).map(
-          (_, index) => {
-            const pageNum = index + 1;
-            return (
-              <button
-                key={pageNum}
-                onClick={() => handlePagination(pageNum)}
-                className={`px-3 py-1 rounded ${
-                  pageNum === currentPage
-                    ? "bg-[#124451] text-white"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {pageNum}
-              </button>
-            );
-          }
-        )}
+        {Array.from({
+          length: Math.ceil(finalExpenses.length / itemsPerPage),
+        }).map((_, index) => {
+          const pageNum = index + 1;
+          return (
+            <button
+              key={pageNum}
+              onClick={() => handlePagination(pageNum)}
+              className={`px-3 py-1 rounded ${
+                pageNum === currentPage
+                  ? "bg-[#124451] text-white"
+                  : "bg-gray-100 text-gray-800"
+              }`}
+            >
+              {pageNum}
+            </button>
+          );
+        })}
         <button
           className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
           onClick={() => handlePagination(currentPage + 1)}
-          disabled={currentPage === Math.ceil(finalExpenses.length / itemsPerPage)}
+          disabled={
+            currentPage === Math.ceil(finalExpenses.length / itemsPerPage)
+          }
         >
           <FaChevronRight />
         </button>

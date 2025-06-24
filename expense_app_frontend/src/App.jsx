@@ -10,6 +10,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import UpdateItem from "./components/UpdateItem/UpdateItem";
 import AdminOtherExpense from "./components/Adminpages/OtherExpense";
 import AdminRegularExpense from "./components/Adminpages/RegularExpense";
+import ExpenseHistory from "./components/Adminpages/ExpenseHistory";
 
 import { setAuthToken } from "./api_service/api";
 import { useEffect, useState } from "react";
@@ -50,7 +51,6 @@ function App() {
 
       {isAuthenticated() && (
         <Route path="/" element={<Layout />}>
-          {/* ✅ Delay this route until userRole is known */}
           <Route
             index
             element={userRole === "Admin" ? <AdminDashboard /> : <Home />}
@@ -58,12 +58,17 @@ function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="regular-expense" element={<RegularExpense />} />
           <Route path="other-expense" element={<OtherExpense />} />
-          <Route path="/admin/other-expense" element={<AdminOtherExpense />} />
-          <Route path="update-item" element={<UpdateItem />} />
           <Route
             path="/admin/regular-expense"
             element={<AdminRegularExpense />}
           />
+          <Route path="/admin/other-expense" element={<AdminOtherExpense />} />
+          <Route
+            path="/admin/expense-history"
+            element={<ExpenseHistory />}
+          />{" "}
+          {/* ✅ Add this */}
+          <Route path="update-item" element={<UpdateItem />} />
           <Route path="/notifications" element={<NotificationsPage />} />
         </Route>
       )}

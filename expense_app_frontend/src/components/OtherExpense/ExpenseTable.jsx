@@ -499,9 +499,16 @@ const ExpenseTable = () => {
                 <td className="p-3">{exp.expense_type}</td>
                 <td className="p-3">
                   {exp.bill ? (
-                    <span className="text-green-600">Uploaded</span> // If bill is uploaded, show 'Uploaded'
+                    <a
+                      href={exp.bill}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      View Bill
+                    </a>
                   ) : (
-                    <span className="text-gray-500">N/A</span> // If no bill, show 'N/A'
+                    <span className="text-gray-500">N/A</span>
                   )}
                 </td>
 

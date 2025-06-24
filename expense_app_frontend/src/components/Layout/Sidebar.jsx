@@ -42,6 +42,12 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
       name: "Update Item",
       icon: faPenToSquare,
     });
+
+    navItems.push({
+      path: "/admin/expense-history",
+      name: "Expense History",
+      icon: faWallet, // You can change this icon
+    });
   }
 
   // Handle logout
