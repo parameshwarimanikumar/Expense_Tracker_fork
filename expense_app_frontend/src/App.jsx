@@ -15,29 +15,25 @@ import ExpenseHistory from "./components/Adminpages/ExpenseHistory";
 import { setAuthToken } from "./api_service/api";
 import { useEffect, useState } from "react";
 
-const isAuthenticated = () => {
-  const token = localStorage.getItem("access");
-  return !!token;
-};
-
 function App() {
   const [authChecked, setAuthChecked] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("access");
-    if (token) {
-      setAuthToken(token);
-    }
-
     const user = JSON.parse(localStorage.getItem("user"));
-    const role = user?.role?.role_name || "User";
-    setUserRole(role);
+
+    if (token && user) {
+      setAuthToken(token);
+      setUserRole(user?.role?.role_name || "User");
+      setIsLoggedIn(true);
+    }
 
     setAuthChecked(true);
   }, []);
 
-  if (!authChecked || !userRole) {
+  if (!authChecked) {
     return (
       <div className="flex items-center justify-center h-screen">
         <span className="text-gray-500">Loading...</span>
@@ -45,38 +41,32 @@ function App() {
     );
   }
 
+  if (!isLoggedIn) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      {/* Logged-in routes */}
+      <Route path="/" element={<Layout />}>
+        {/* Home route renders AdminDashboard or Home based on role */}
+        <Route index element={userRole === "Admin" ? <AdminDashboard /> : <Home />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="regular-expense" element={<RegularExpense />} />
+        <Route path="other-expense" element={<OtherExpense />} />
+        <Route path="update-item" element={<UpdateItem />} />
+        <Route path="notifications" element={<NotificationsPage />} />
 
-      {isAuthenticated() && (
-        <Route path="/" element={<Layout />}>
-          <Route
-            index
-            element={userRole === "Admin" ? <AdminDashboard /> : <Home />}
-          />
-          <Route path="profile" element={<ProfilePage />} />
-          <Route path="regular-expense" element={<RegularExpense />} />
-          <Route path="other-expense" element={<OtherExpense />} />
-          <Route
-            path="/admin/regular-expense"
-            element={<AdminRegularExpense />}
-          />
-          <Route path="/admin/other-expense" element={<AdminOtherExpense />} />
-          <Route
-            path="/admin/expense-history"
-            element={<ExpenseHistory />}
-          />{" "}
-          {/* ✅ Add this */}
-          <Route path="update-item" element={<UpdateItem />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-        </Route>
-      )}
-
-      {/* Fallback: if not logged in, redirect all other routes */}
-      {!isAuthenticated() && (
-        <Route path="*" element={<Navigate to="/login" />} />
-      )}
+        {/* Admin-only routes */}
+        <Route path="admin/regular-expense" element={<AdminRegularExpense />} />
+        <Route path="admin/other-expense" element={<AdminOtherExpense />} />
+        <Route path="admin/expense-history" element={<ExpenseHistory />} />
+      </Route>
     </Routes>
   );
 }

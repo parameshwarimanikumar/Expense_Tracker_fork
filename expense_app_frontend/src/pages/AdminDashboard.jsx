@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { PieChart, Pie, Cell } from "recharts";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -7,8 +7,9 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 const COLORS = ["#1c455e", "#1d5b79", "#195f76"];
+const PAGE_SIZE = 10;
 
-const ExpenseDashboardTailwind = () => {
+const AdminDashboard = () => {
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [error, setError] = useState(null);
@@ -23,8 +24,87 @@ const ExpenseDashboardTailwind = () => {
   const datePickerRef = useRef(null);
   const navigate = useNavigate();
 
+  const getGroupedOrders = async (page, pageSize, filters = {}) => {
+    try {
+      const token = localStorage.getItem("access");
+      if (!token) throw new Error("No access token found. Please log in.");
+
+      const params = new URLSearchParams({
+        page,
+        page_size: pageSize,
+        ...filters,
+      });
+
+      const response = await axios.get(
+        `http://localhost:8000/api/orders/grouped-by-date/?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error("Get grouped orders error:", error);
+      throw error.response
+        ? error.response.data
+        : "Failed to fetch grouped orders.";
+    }
+  };
+
+  const updateDashboardData = (expenseData, regularExpenseTotal) => {
+    let otherExpense = 0;
+
+    expenseData.forEach((exp) => {
+      const expenseType = exp.expense_type?.toLowerCase().trim() || "";
+      const amount =
+        parseFloat(exp.total_amount) || parseFloat(exp.amount) || 0;
+
+      if (["product", "service", "food"].includes(expenseType)) {
+        otherExpense += amount;
+      }
+    });
+
+    const totalExpense = regularExpenseTotal + otherExpense;
+
+    setCardData({
+      regularExpense: regularExpenseTotal.toFixed(2),
+      otherExpense: otherExpense.toFixed(2),
+      totalExpense: totalExpense.toFixed(2),
+    });
+
+    setChartData([
+      { name: "Regular Expense", value: regularExpenseTotal || 0 },
+      { name: "Other Expense", value: otherExpense || 0 },
+    ]);
+  };
+
+  const fetchRegularExpenseTotal = useCallback(
+    async (filteredData) => {
+      try {
+        const filters = {};
+        if (startDate && endDate) {
+          filters.start_date = dayjs(startDate).format("YYYY-MM-DD");
+          filters.end_date = dayjs(endDate).format("YYYY-MM-DD");
+        }
+        const groupedOrderData = await getGroupedOrders(1, PAGE_SIZE, filters);
+        const regularExpenseTotal = groupedOrderData.total_price || 0;
+        updateDashboardData(filteredData, regularExpenseTotal);
+      } catch (error) {
+        console.error("Error fetching regular expense total:", error);
+        setError(
+          "Failed to fetch regular expense total: " +
+            (error.message || "Unknown error")
+        );
+      }
+    },
+    [startDate, endDate]
+  );
+
   useEffect(() => {
-    const getExpenses = async () => {
+    const fetchData = async () => {
       const token = localStorage.getItem("access");
       if (!token) {
         setError("No access token found. Please log in.");
@@ -32,7 +112,7 @@ const ExpenseDashboardTailwind = () => {
       }
 
       try {
-        const response = await axios.get(
+        const expenseResponse = await axios.get(
           "http://localhost:8000/api/expenses/",
           {
             headers: {
@@ -41,60 +121,22 @@ const ExpenseDashboardTailwind = () => {
             },
           }
         );
+        const expenseData = expenseResponse.data;
 
-        const data = response.data;
-        setExpenses(data);
-        setFilteredExpenses(data);
-        updateDashboardData(data);
+        const groupedOrderData = await getGroupedOrders(1, PAGE_SIZE, {});
+        const regularExpenseTotal = groupedOrderData.total_price || 0;
+
+        setExpenses(expenseData);
+        setFilteredExpenses(expenseData);
+        updateDashboardData(expenseData, regularExpenseTotal);
         setError(null);
       } catch (error) {
-        setError(
-          error.response
-            ? error.response.data.message
-            : "Failed to fetch expenses."
-        );
+        setError("Failed to fetch data: " + (error.message || "Unknown error"));
       }
     };
 
-    getExpenses();
+    fetchData();
   }, []);
-
-  const updateDashboardData = (data) => {
-    let regularExpense = 0;
-    let otherExpense = 0;
-
-    data.forEach((exp) => {
-      const type = exp.expense_type
-        ? exp.expense_type.toLowerCase().trim()
-        : "";
-      const amount = parseFloat(exp.amount) || 0;
-
-      if (["food"].includes(type)) {
-        regularExpense += amount;
-      } else {
-        otherExpense += amount;
-      }
-    });
-
-    const totalExpense = regularExpense + otherExpense;
-
-    setCardData({
-      regularExpense: regularExpense.toFixed(2),
-      otherExpense: otherExpense.toFixed(2),
-      totalExpense: totalExpense.toFixed(2),
-    });
-
-    setChartData([
-      {
-        name: "Regular Expense",
-        value: regularExpense > 0 ? parseFloat(regularExpense.toFixed(2)) : 0,
-      },
-      {
-        name: "Other Expense",
-        value: otherExpense > 0 ? parseFloat(otherExpense.toFixed(2)) : 0,
-      },
-    ]);
-  };
 
   useEffect(() => {
     if (startDate && endDate) {
@@ -106,17 +148,17 @@ const ExpenseDashboardTailwind = () => {
         );
       });
       setFilteredExpenses(filtered);
-      updateDashboardData(filtered);
+      fetchRegularExpenseTotal(filtered);
     } else {
       setFilteredExpenses(expenses);
-      updateDashboardData(expenses);
+      fetchRegularExpenseTotal(expenses);
     }
-  }, [startDate, endDate, expenses]);
+  }, [startDate, endDate, expenses, fetchRegularExpenseTotal]);
 
   const resetDateFilter = () => {
     setDateRange([null, null]);
     setFilteredExpenses(expenses);
-    updateDashboardData(expenses);
+    fetchRegularExpenseTotal(expenses);
     if (datePickerRef.current) {
       datePickerRef.current.setOpen(false);
     }
@@ -150,7 +192,7 @@ const ExpenseDashboardTailwind = () => {
         `http://localhost:8000/api/expenses/${expenseId}/`,
         {
           date: updatedExpense.date,
-          user: updatedExpense.user,
+          user: updatedExpense.user.id,
           description: updatedExpense.description,
           expense_type: updatedExpense.expense_type,
           amount: updatedExpense.amount,
@@ -167,11 +209,7 @@ const ExpenseDashboardTailwind = () => {
       );
       setError(null);
     } catch (error) {
-      setError(
-        error.response
-          ? error.response.data.message
-          : `Failed to update ${field}.`
-      );
+      setError(error.response?.data.message || `Failed to update ${field}.`);
       setExpenses(originalExpenses);
       setFilteredExpenses(originalExpenses);
     }
@@ -180,13 +218,13 @@ const ExpenseDashboardTailwind = () => {
   const handleViewDetails = (title) => {
     switch (title) {
       case "Regular Expense":
-        navigate("/regular-expense");
+        navigate("/admin/regular-expense");
         break;
       case "Other Expense":
-        navigate("/other-expense");
+        navigate("/admin/other-expense");
         break;
       case "Total Expense":
-        navigate("/expense-history");
+        navigate("/admin/expense-history");
         break;
       default:
         break;
@@ -253,6 +291,7 @@ const ExpenseDashboardTailwind = () => {
             </div>
           </div>
         </div>
+
         <div className="bg-white p-4 rounded-xl h-[60vh] overflow-auto">
           <div className="font-bold text-[#1e2a52] text-lg mb-3">
             Recent Entries
@@ -285,7 +324,7 @@ const ExpenseDashboardTailwind = () => {
                 <th className="py-2 text-center">Date</th>
                 <th className="py-2 text-center">Name</th>
                 <th className="py-2 text-center">Title</th>
-                <th className="py-2 text-center">Amount</th>
+                <th className="py-2 text-right">Amount</th>
                 <th></th>
                 <th></th>
               </tr>
@@ -303,12 +342,11 @@ const ExpenseDashboardTailwind = () => {
                   <td className="py-3 text-center">
                     {exp.user?.name || exp.user?.username || "Unknown"}
                   </td>
-
                   <td className="py-3 text-center">
                     {exp.description || "N/A"}
                   </td>
-                  <td className="py-3 text-center">
-                    ₹ {parseFloat(exp.amount).toFixed(2)}
+                  <td className="py-3 text-right">
+                    ₹ {parseFloat(exp.total_amount || exp.amount).toFixed(2)}
                   </td>
                   <td className="py-3 text-center">
                     <button
@@ -351,10 +389,9 @@ const ExpenseDashboardTailwind = () => {
             </tbody>
           </table>
         </div>
-        
       </div>
     </div>
   );
 };
 
-export default ExpenseDashboardTailwind;
+export default AdminDashboard;

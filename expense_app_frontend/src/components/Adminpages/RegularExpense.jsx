@@ -78,7 +78,7 @@ const RegularExpense = () => {
             <FontAwesomeIcon icon={faPlus} /> Add Item
           </button>
           <button
-            className="bg-green-600 text-white px-3 py-2 rounded flex items-center gap-2"
+            className="bg-[#124451] text-white px-3 py-2 rounded flex items-center gap-2"
             onClick={downloadExcel}
           >
             <FontAwesomeIcon icon={faFileExcel} /> Download Excel

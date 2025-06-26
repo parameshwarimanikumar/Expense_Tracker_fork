@@ -253,7 +253,7 @@ const ExpenseHistory = () => {
                     <td className="p-2">{exp.expense_category}</td>
                     <td className="p-2">{exp.expense_type}</td>
                     <td className="p-2">₹{exp.amount.toFixed(2)}</td>
-                    <td className="p-2">{exp.is_verified ? "Yes" : "No"}</td>
+                    <td className="p-2">{exp.is_verified ? "Yes" : "-"}</td>
                   </tr>
                 ))}
               </tbody>

@@ -31,10 +31,10 @@ function Login() {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       const userRole = data?.user?.role?.role_name || 'User';
-      console.log('Logged-in user role:', userRole); // Optional debug
+      console.log('Logged-in user role:', userRole); // Debug
 
-      // ✅ Navigate to root - App.jsx will handle role-based dashboard
-      navigate('/');
+      // ✅ Force reload so App.jsx reads updated localStorage
+      window.location.href = '/';
     } catch (err) {
       console.error(err);
       setError('Invalid credentials. Please try again.');
@@ -48,7 +48,7 @@ function Login() {
         {error && <div className="text-red-500 mb-4 text-center">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email */}
+          {/* Email Input */}
           <div className="relative">
             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
               <Mail className="h-5 w-5 text-gray-400" />
@@ -63,7 +63,7 @@ function Login() {
             />
           </div>
 
-          {/* Password */}
+          {/* Password Input */}
           <div className="relative">
             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
               <Lock className="h-5 w-5 text-gray-400" />
@@ -85,7 +85,7 @@ function Login() {
             </button>
           </div>
 
-          {/* Submit */}
+          {/* Submit Button */}
           <button
             type="submit"
             className="w-full bg-[#2B3B6C] text-white py-2 px-4 rounded-md hover:bg-[#1e2a4d] transition"

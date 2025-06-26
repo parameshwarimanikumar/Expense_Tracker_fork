@@ -7,14 +7,12 @@ import {
   faWallet,
   faRightFromBracket,
   faXmark,
-  faPenToSquare, // ✅ icon for Update Item
+  faPenToSquare,
 } from "@fortawesome/free-solid-svg-icons";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { logoutUser } from "../../api_service/api";
 
 const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
-  const navigate = useNavigate();
-
   // Get user from localStorage
   const storedUser = JSON.parse(localStorage.getItem("user"));
   const isAdmin = storedUser?.role?.role_name === "Admin";
@@ -27,7 +25,6 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
       name: "Regular Expense",
       icon: faIndianRupeeSign,
     },
-
     {
       path: isAdmin ? "/admin/other-expense" : "/other-expense",
       name: "Other Expense",
@@ -35,19 +32,20 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
     },
   ];
 
-  // Add admin-only "Update Item" tab
+  // Add admin-only items
   if (isAdmin) {
-    navItems.push({
-      path: "/update-item",
-      name: "Update Item",
-      icon: faPenToSquare,
-    });
-
-    navItems.push({
-      path: "/admin/expense-history",
-      name: "Expense History",
-      icon: faWallet, // You can change this icon
-    });
+    navItems.push(
+      {
+        path: "/update-item",
+        name: "Update Item",
+        icon: faPenToSquare,
+      },
+      {
+        path: "/admin/expense-history",
+        name: "Expense History",
+        icon: faWallet, // You can change this icon
+      }
+    );
   }
 
   // Handle logout
@@ -60,7 +58,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
       localStorage.removeItem("user");
-      navigate("/login");
+      window.location.href = "/login"; // 🔁 Force full reload
     }
   };
 
