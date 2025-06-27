@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaPen } from "react-icons/fa"; // Pencil icon
+import { FaPen } from "react-icons/fa";
 
 const PersonalInfo = () => {
   const [editMode, setEditMode] = useState(false);
@@ -27,13 +27,12 @@ const PersonalInfo = () => {
           email,
           password: "",
           profilePic: null,
-          previewPic: profile_picture || "/default-avatar.png", // fallback image
+          previewPic: profile_picture || "/default-avatar.png",
         };
         setFormData(newData);
         setInitialData(newData);
       })
       .catch(() => {
-        // Handle error fetching profile if needed
         alert("Failed to load profile data.");
       });
   }, []);
@@ -68,16 +67,29 @@ const PersonalInfo = () => {
           "Content-Type": "multipart/form-data",
         },
       });
+
+      // ✅ Preserve the existing role from localStorage
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      const role = storedUser?.role;
+
+      // ✅ Save updated user info with preserved role
+      localStorage.setItem("user", JSON.stringify({
+        name: formData.name,
+        email: formData.email,
+        profile_picture: formData.previewPic,
+        role: role,
+      }));
+
       alert("Profile updated successfully");
       setEditMode(false);
       setInitialData({
         ...formData,
         password: "",
         profilePic: null,
-      }); // update initial data with saved info (reset password & profilePic)
+      });
       setFormData((prev) => ({
         ...prev,
-        password: "", // clear password after save
+        password: "",
         profilePic: null,
       }));
     } catch {

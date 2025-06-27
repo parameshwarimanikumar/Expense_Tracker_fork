@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import brillersys from "../../assets/brillersys.png";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -13,9 +13,13 @@ import { NavLink } from "react-router-dom";
 import { logoutUser } from "../../api_service/api";
 
 const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
-  // Get user from localStorage
-  const storedUser = JSON.parse(localStorage.getItem("user"));
-  const isAdmin = storedUser?.role?.role_name === "Admin";
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Detect role dynamically on mount
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+    setIsAdmin(storedUser?.role?.role_name === "Admin");
+  }, []);
 
   // Define nav items
   const navItems = [
@@ -43,7 +47,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
       {
         path: "/admin/expense-history",
         name: "Expense History",
-        icon: faWallet, // You can change this icon
+        icon: faWallet, // Customize this icon if needed
       }
     );
   }
@@ -51,14 +55,14 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
   // Handle logout
   const handleLogout = async () => {
     try {
-      await logoutUser(); // optional
+      await logoutUser(); // optional API call
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
       localStorage.removeItem("user");
-      window.location.href = "/login"; // 🔁 Force full reload
+      window.location.href = "/login"; // Redirect to login
     }
   };
 
