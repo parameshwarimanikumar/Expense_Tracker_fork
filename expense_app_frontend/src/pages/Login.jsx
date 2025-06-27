@@ -33,8 +33,12 @@ function Login() {
       const userRole = data?.user?.role?.role_name || 'User';
       console.log('Logged-in user role:', userRole); // Debug
 
-      // ✅ Force reload so App.jsx reads updated localStorage
-      window.location.href = '/';
+      // ✅ Navigate immediately based on role
+      if (userRole === 'Admin') {
+        navigate('/admin-dashboard');
+      } else {
+        navigate('/user-dashboard'); // or use '/' if your route is different
+      }
     } catch (err) {
       console.error(err);
       setError('Invalid credentials. Please try again.');

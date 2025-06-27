@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileExcel, faPlus, faFilter } from "@fortawesome/free-solid-svg-icons";
+import { faFileExcel, faPlus } from "@fortawesome/free-solid-svg-icons";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import AddItem from "../UpdateItem/Additem";
 import { getGroupedOrders } from "../../api_service/api";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 
 const PAGE_SIZE = 7;
 
@@ -16,43 +14,76 @@ const RegularExpense = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showAddItem, setShowAddItem] = useState(false);
-  const [showFilter, setShowFilter] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
-  const [itemName, setItemName] = useState("");
 
-  const fetchGroupedData = useCallback(async (page) => {
-    setLoading(true);
-    try {
-      const filters = {};
-      if (startDate) filters.start_date = startDate.toISOString().slice(0, 10);
-      if (endDate) filters.end_date = endDate.toISOString().slice(0, 10);
-      if (itemName) filters.item_name = itemName;
+  // Dropdown filter states
+  const [uniqueUsers, setUniqueUsers] = useState([]);
+  const [uniqueItems, setUniqueItems] = useState([]);
+  const [uniqueDates, setUniqueDates] = useState([]);
+  const [selectedUser, setSelectedUser] = useState("");
+  const [selectedItem, setSelectedItem] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
 
-      const data = await getGroupedOrders(page, PAGE_SIZE, filters);
-      setGroupedItems(data.results);
-      setTotalPrice(data.total_price);
-      setTotalPages(data.total_pages);
-    } catch (err) {
-      console.error("Error fetching data:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [startDate, endDate, itemName]);
+  const fetchGroupedData = useCallback(
+    async (page) => {
+      setLoading(true);
+      try {
+        const filters = {};
+        if (selectedUser) filters.user = selectedUser;
+        if (selectedItem) filters.item_name = selectedItem;
+        if (selectedDate) filters.date = selectedDate;
+
+        const data = await getGroupedOrders(page, PAGE_SIZE, filters);
+        setGroupedItems(data.results);
+        setTotalPrice(data.total_price);
+        setTotalPages(data.total_pages);
+
+        // Extract unique values for dropdowns
+        const usersSet = new Set();
+        const itemsSet = new Set();
+        const datesSet = new Set();
+
+        Object.entries(data.results).forEach(([date, items]) => {
+          datesSet.add(date);
+          items.forEach((item) => {
+            usersSet.add(item.user);
+            itemsSet.add(item.item_name);
+          });
+        });
+
+        setUniqueUsers([...usersSet]);
+        setUniqueItems([...itemsSet]);
+        setUniqueDates([...datesSet]);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedUser, selectedItem, selectedDate]
+  );
 
   useEffect(() => {
     fetchGroupedData(currentPage);
   }, [fetchGroupedData, currentPage]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchGroupedData(1);
+  }, [selectedUser, selectedItem, selectedDate, fetchGroupedData]);
+
   const formatDate = (dateString) => {
     const d = new Date(dateString);
-    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+    return `${String(d.getDate()).padStart(2, "0")}/${String(
+      d.getMonth() + 1
+    ).padStart(2, "0")}/${d.getFullYear()}`;
   };
 
   const downloadExcel = () => {
     const wb = XLSX.utils.book_new();
-    const rows = [["Date", "Item", "Count", "Price/item", "Total/item"]];
+    const rows = [
+      ["Date", "Item", "User", "Count", "Price/item", "Total/item"],
+    ];
     let grandTotal = 0;
 
     Object.entries(groupedItems).forEach(([date, items]) => {
@@ -61,35 +92,24 @@ const RegularExpense = () => {
         rows.push([
           formatDate(date),
           item.item_name,
+          item.user,
           item.count,
           `₹${item.price.toFixed(2)}`,
-          `₹${total.toFixed(2)}`
+          `₹${total.toFixed(2)}`,
         ]);
         grandTotal += total;
       });
       rows.push([]);
     });
 
-    rows.push(["", "", "", "Grand Total", `₹${grandTotal.toFixed(2)}`]);
+    rows.push(["", "", "", "", "Grand Total", `₹${grandTotal.toFixed(2)}`]);
     const ws = XLSX.utils.aoa_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, "Expenses");
     const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(new Blob([buffer]), `expenses_${new Date().toISOString().slice(0, 10)}.xlsx`);
-  };
-
-  const handleFilterApply = () => {
-    setShowFilter(false);
-    setCurrentPage(1);
-    fetchGroupedData(1);
-  };
-
-  const handleClearFilters = () => {
-    setStartDate(null);
-    setEndDate(null);
-    setItemName("");
-    setCurrentPage(1);
-    fetchGroupedData(1);
-    setShowFilter(false);
+    saveAs(
+      new Blob([buffer]),
+      `expenses_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
   };
 
   const handlePageChange = (page) => {
@@ -102,86 +122,80 @@ const RegularExpense = () => {
     <div className="p-4 md:p-6 bg-white rounded-lg min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <h2 className="text-lg md:text-xl font-bold text-[#124451]">
-          {loading ? "Loading..." : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
+          {loading
+            ? "Loading..."
+            : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
         </h2>
         <div className="flex gap-2 w-full md:w-auto">
           <button
-            className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full flex items-center gap-1"
-            onClick={() => setShowFilter(true)}
-          >
-            <FontAwesomeIcon icon={faFilter} />
-            <span className="hidden sm:inline">Filter</span>
-          </button>
-          <button
-            className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full flex items-center gap-1"
+            className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-1"
             onClick={() => setShowAddItem(true)}
           >
             <FontAwesomeIcon icon={faPlus} />
             <span className="hidden sm:inline">Add Item</span>
           </button>
           <button
-            className="bg-[#124451] text-white px-3 py-1 text-sm md:text-base md:px-4 rounded-full flex items-center gap-1"
+            className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-1"
             onClick={downloadExcel}
           >
             <FontAwesomeIcon icon={faFileExcel} className="text-green-600" />
             <span className="hidden sm:inline">Download Excel</span>
           </button>
-          <button
-            className="bg-gray-300 text-[#124451] px-3 py-1 text-sm md:text-base md:px-4 rounded-full"
-            onClick={handleClearFilters}
-          >
-            Clear Filters
-          </button>
         </div>
       </div>
 
-      {/* Filter Modal */}
-      {showFilter && (
-        <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md relative">
-            <button className="absolute top-3 right-4 text-xl" onClick={() => setShowFilter(false)}>×</button>
-            <h3 className="text-lg font-semibold mb-4">Filter Expenses</h3>
-            <div className="mb-4">
-              <label className="block mb-1 font-medium">Start Date</label>
-              <DatePicker
-                selected={startDate}
-                onChange={(date) => setStartDate(date)}
-                className="w-full p-2 border rounded"
-                placeholderText="Select start date"
-                dateFormat="yyyy-MM-dd"
-                isClearable
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block mb-1 font-medium">End Date</label>
-              <DatePicker
-                selected={endDate}
-                onChange={(date) => setEndDate(date)}
-                className="w-full p-2 border rounded"
-                placeholderText="Select end date"
-                dateFormat="yyyy-MM-dd"
-                isClearable
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block mb-1 font-medium">Item Name</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded"
-                value={itemName}
-                onChange={(e) => setItemName(e.target.value)}
-                placeholder="Enter item name"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="px-4 py-2 bg-gray-300 rounded" onClick={handleClearFilters}>
-                Cancel
-              </button>
-              <button className="px-4 py-2 bg-[#124451] text-white rounded" onClick={handleFilterApply}>
-                Apply Filter
-              </button>
-            </div>
+      {/* Header with inline dropdown filters */}
+      {!loading && (
+        <div className="grid grid-cols-7 gap-2 px-2 py-3 bg-gray-50 text-[13px] font-semibold text-gray-600 border-b">
+          <div>
+            <div>Date</div>
+            <select
+              className="mt-1 text-xs p-1 rounded w-full"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            >
+              <option value="">All</option>
+              {uniqueDates.map((d, i) => (
+                <option key={i} value={d}>
+                  {formatDate(d)}
+                </option>
+              ))}
+            </select>
           </div>
+          <div>
+            <div>Item</div>
+            <select
+              className="mt-1 text-xs p-1 rounded w-full"
+              value={selectedItem}
+              onChange={(e) => setSelectedItem(e.target.value)}
+            >
+              <option value="">All</option>
+              {uniqueItems.map((item, i) => (
+                <option key={i} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <div>User</div>
+            <select
+              className="mt-1 text-xs p-1 rounded w-full"
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+            >
+              <option value="">All</option>
+              {uniqueUsers.map((user, i) => (
+                <option key={i} value={user}>
+                  {user}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end justify-center pb-1">Count</div>
+          <div className="flex items-end justify-center pb-1">Price/item</div>
+          <div className="flex items-end justify-center pb-1">Total/item</div>
+          <div className="flex items-end justify-center pb-1">Total/date</div>
         </div>
       )}
 
@@ -191,68 +205,66 @@ const RegularExpense = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#124451]"></div>
         </div>
       ) : Object.keys(groupedItems).length === 0 ? (
-        <div className="text-center text-gray-500 mt-12">No expense records available.</div>
+        <div className="text-center text-gray-500 mt-12">
+          No expense records available.
+        </div>
       ) : (
         <>
-          {/* Desktop View */}
-          <div className="hidden md:block">
-            <div className="grid grid-cols-6 font-semibold text-gray-500 text-[14px] border-b pb-2 mb-2 border-gray-100 p-4">
-              <div>Date</div>
-              <div>Items</div>
-              <div className="text-center">Count</div>
-              <div className="text-center">Price / item</div>
-              <div className="text-center">Total price / item</div>
-              <div className="text-center">Total price</div>
-            </div>
-            {Object.keys(groupedItems).map((date, idx) => {
-              const items = groupedItems[date];
-              const totalPerRow = items.reduce((sum, item) => sum + item.count * item.price, 0);
-              return (
-                <div key={date} className={`${idx % 2 === 0 ? "bg-gray-100" : "bg-white"} p-4 grid grid-cols-6`}>
-                  <div className="row-span-full flex items-center font-semibold">
-                    {formatDate(date)}
-                  </div>
-                  <div className="col-span-4">
-                    {items.map((item, index) => (
-                      <div key={index} className="grid grid-cols-4 text-sm text-gray-800 py-1">
-                        <div>{item.item_name}</div>
-                        <div className="text-center">{item.count}</div>
-                        <div className="text-center">₹{item.price.toFixed(2)}</div>
-                        <div className="text-center">₹{(item.count * item.price).toFixed(2)}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-center font-semibold">
-                    ₹ {totalPerRow.toFixed(2)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Mobile View */}
-          <div className="md:hidden space-y-4">
-            {Object.keys(groupedItems).map((date, idx) => {
-              const items = groupedItems[date];
-              const totalPerRow = items.reduce((sum, item) => sum + item.count * item.price, 0);
-              return (
-                <div key={date} className={`${idx % 2 === 0 ? "bg-gray-100" : "bg-white"} p-4 rounded-lg shadow-sm`}>
-                  <div className="font-semibold text-[#124451] mb-3">{formatDate(date)}</div>
+          {Object.keys(groupedItems).map((date, idx) => {
+            const items = groupedItems[date];
+            const totalPerRow = items.reduce(
+              (sum, item) => sum + item.count * item.price,
+              0
+            );
+            return (
+              <div
+                key={date}
+                className={`${
+                  idx % 2 === 0 ? "bg-gray-100" : "bg-white"
+                } p-4 grid grid-cols-7`}
+              >
+                <div className="flex items-center">{formatDate(date)}</div>
+                <div className="col-span-1">
                   {items.map((item, index) => (
-                    <div key={index} className="flex justify-between mb-2 text-sm">
-                      <span>{item.item_name}</span>
-                      <span>Count: {item.count}</span>
-                      <span>₹{item.price.toFixed(2)}</span>
-                      <span>Total: ₹{(item.count * item.price).toFixed(2)}</span>
+                    <div key={index} className="py-1">
+                      {item.item_name}
                     </div>
                   ))}
-                  <div className="font-semibold text-center mt-2 border-t pt-2">
-                    Total Price: ₹ {totalPerRow.toFixed(2)}
-                  </div>
                 </div>
-              );
-            })}
-          </div>
+                <div>
+                  {items.map((item, index) => (
+                    <div key={index} className="text-center py-1">
+                      {item.user}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  {items.map((item, index) => (
+                    <div key={index} className="text-center py-1">
+                      {item.count}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  {items.map((item, index) => (
+                    <div key={index} className="text-center py-1">
+                      ₹{item.price.toFixed(2)}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  {items.map((item, index) => (
+                    <div key={index} className="text-center py-1">
+                      ₹{(item.count * item.price).toFixed(2)}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-center font-semibold">
+                  ₹ {totalPerRow.toFixed(2)}
+                </div>
+              </div>
+            );
+          })}
 
           {/* Pagination */}
           {totalPages > 1 && (

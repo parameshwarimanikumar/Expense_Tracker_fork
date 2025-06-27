@@ -934,29 +934,24 @@ def delete_orders_by_date_user(request):
         return Response({'error': str(e)}, status=500)
 
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def order_items_grouped_by_date(request):
-    user = request.user
-    is_admin = user.role and user.role.role_name.lower() == 'admin'
+    # ✅ Allow ALL users to see ALL orders
+    order_items = OrderItem.objects.all()
 
-    if is_admin:
-        order_items = OrderItem.objects.all()
-    else:
-        order_items = OrderItem.objects.filter(order__created_user=user)
-    
     # Filters
     start_date = request.query_params.get('start_date')
     end_date = request.query_params.get('end_date')
     month = request.query_params.get('month')
-    
+    user = request.query_params.get('user')
+    item_name = request.query_params.get('item_name')
+    date = request.query_params.get('date')
+
     if start_date:
         order_items = order_items.filter(added_date__gte=start_date)
     if end_date:
         order_items = order_items.filter(added_date__lte=end_date)
-    
-
     if month:
         try:
             year = int(month[:4])
@@ -964,51 +959,60 @@ def order_items_grouped_by_date(request):
             order_items = order_items.filter(added_date__year=year, added_date__month=month_num)
         except (ValueError, IndexError):
             pass
-    
-    # Pagination params with safe fallback
+
+    if user:
+        order_items = order_items.filter(order__created_user__username=user)
+    if item_name:
+        order_items = order_items.filter(item__item_name=item_name)
+    if date:
+        order_items = order_items.filter(added_date__date=date)
+
+    # Pagination
     try:
         page = int(request.query_params.get('page', 1))
         page_size = int(request.query_params.get('page_size', 10))
     except ValueError:
         page, page_size = 1, 10
-    
-    # Get distinct dates (descending)
+
     dates = order_items.dates('added_date', 'day').order_by('-added_date')
     total_count = dates.count()
     total_pages = (total_count + page_size - 1) // page_size
-    
+
     start = (page - 1) * page_size
     end = start + page_size
     paginated_dates = dates[start:end]
-    
+
     grouped_data = {}
     grand_total = 0
-    
+
     for date in paginated_dates:
         date_str = date.strftime('%Y-%m-%d')
-        items = order_items.filter(added_date__date=date).select_related('item')
-        
+        items = order_items.filter(added_date__date=date).select_related('item', 'order__created_user')
+
         date_items = {}
         date_total = 0
-        
+
         for item in items:
-            if item.item.id not in date_items:
-                date_items[item.item.id] = {
+            key = item.item.id
+
+            if key not in date_items:
+                date_items[key] = {
                     'item_id': item.item.id,
                     'item_name': item.item.item_name,
                     'price': float(item.item.item_price),
                     'count': 0,
-                    'total': 0
+                    'total': 0,
+                    'user': item.order.created_user.username
                 }
-            
-            date_items[item.item.id]['count'] += item.count
+
+            date_items[key]['count'] += item.count
             item_total = item.count * item.item.item_price
-            date_items[item.item.id]['total'] += item_total
+            date_items[key]['total'] += item_total
             date_total += item_total
-        
+
         grouped_data[date_str] = list(date_items.values())
         grand_total += date_total
-    
+
     return Response({
         'results': grouped_data,
         'total_price': grand_total,
@@ -1016,16 +1020,9 @@ def order_items_grouped_by_date(request):
         'current_page': page
     })
 
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def available_dates(request):
-    user = request.user
-    is_admin = user.role and user.role.role_name.lower() == 'admin'
-
-    if is_admin:
-        dates = OrderItem.objects.dates('added_date', 'day').order_by('-added_date')
-    else:
-        dates = OrderItem.objects.filter(order__created_user=user).dates('added_date', 'day').order_by('-added_date')
-
+    # ✅ Show all dates, no matter the user
+    dates = OrderItem.objects.dates('added_date', 'day').order_by('-added_date')
     return Response([date.strftime('%Y-%m-%d') for date in dates])
