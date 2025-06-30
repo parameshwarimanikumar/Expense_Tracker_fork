@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
-  FaFilter,
-  FaFileInvoice,
-  FaCheckCircle,
-  FaTimesCircle,
-  FaRedo,
-  FaEdit,
-  FaChevronLeft,
-  FaChevronRight,
+  FaFilter, FaFileInvoice, FaCheckCircle, FaTimesCircle,
+  FaRedo, FaEdit, FaTrash, FaChevronLeft, FaChevronRight,
 } from "react-icons/fa";
 import dayjs from "dayjs";
 import axios from "axios";
@@ -16,285 +10,255 @@ const ExpenseTable = () => {
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [filters, setFilters] = useState({
-    type: "",
-    isVerified: "",
-    startDate: "",
-    endDate: "",
+    type: "", isVerified: "", startDate: "", endDate: ""
   });
   const [showFilter, setShowFilter] = useState(false);
   const [showExpense, setShowExpense] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [expenseData, setExpenseData] = useState({
-    date: "",
-    description: "",
-    type: "Product",
-    bill: null,
-    amount: "",
-    isVerified: false,
-    isRefunded: false,
+    date: "", description: "", type: "Product", bill: null,
+    amount: "", isVerified: false, isRefunded: false,
   });
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [viewingMyData, setViewingMyData] = useState(false);
+
   const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
+        setLoading(true);
         const token = localStorage.getItem("access");
-
-        if (!token) {
-          console.error("No access token found in localStorage.");
-          return;
-        }
-
-        const response = await axios.get(
-          "http://localhost:8000/api/expenses/",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        console.log("Fetched expenses:", response.data);
+        const url = viewingMyData
+          ? "http://localhost:8000/api/expenses/mydata/"
+          : "http://localhost:8000/api/expenses/";
+        const response = await axios.get(url, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         setExpenses(response.data);
       } catch (error) {
-        console.error("Error fetching expenses:", error.response || error);
+        console.error("Error fetching expenses:", error);
+      } finally {
+        setLoading(false);
       }
     };
-
     fetchExpenses();
-  }, []);
-
-  // APPLY FILTERS
+  }, [viewingMyData]);
 
   useEffect(() => {
     let temp = [...expenses];
-    // Filter by type
-    if (filters.type) {
-      temp = temp.filter((exp) => exp.expense_type === filters.type);
-    }
-    // Filter by verification status
-    if (filters.isVerified !== "") {
-      temp = temp.filter(
-        (exp) => exp.is_verified === (filters.isVerified === "true")
-      );
-    }
-
-    // Filter by date range
-    if (filters.startDate && filters.endDate) {
-      temp = temp.filter((exp) => {
-        const expDate = dayjs(exp.date);
-        return (
-          expDate.isAfter(dayjs(filters.startDate).subtract(1, "day")) &&
-          expDate.isBefore(dayjs(filters.endDate).add(1, "day"))
-        );
+    if (filters.type) temp = temp.filter(e => e.expense_type === filters.type);
+    if (filters.isVerified !== "")
+      temp = temp.filter(e => e.is_verified === (filters.isVerified === "true"));
+    if (filters.startDate && filters.endDate)
+      temp = temp.filter(e => {
+        const d = dayjs(e.date);
+        return d.isAfter(dayjs(filters.startDate).subtract(1, 'day')) &&
+               d.isBefore(dayjs(filters.endDate).add(1, 'day'));
       });
-    }
-
     setFilteredExpenses(temp);
     setCurrentPage(1);
   }, [expenses, filters]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const resetFilters = () => {
-    setFilters({
-      type: "",
-      isVerified: "",
-      startDate: "",
-      endDate: "",
-    });
-  };
-
+  const resetFilters = () => setFilters({ type: "", isVerified: "", startDate: "", endDate: "" });
   const showfilter = () => setShowFilter(!showFilter);
   const showexpense = () => {
     setShowExpense(!showExpense);
     setEditingExpense(null);
-    setExpenseData({
-      date: "",
-      description: "",
-      type: "Product",
-      bill: null,
-      amount: "",
-      isVerified: false,
-      isRefunded: false,
-    });
+    setExpenseData({ date: "", description: "", type: "Product", bill: null, amount: "", isVerified: false, isRefunded: false });
   };
 
   const handleExpenseSubmit = async (e) => {
     e.preventDefault();
-
-    console.log("Expense Data on Submit:", expenseData); // Debugging point
-
     const token = localStorage.getItem("access");
-    if (!token) {
-      alert("Not authenticated");
-      return;
-    }
     const formData = new FormData();
     formData.append("date", expenseData.date);
     formData.append("description", expenseData.description);
     formData.append("expense_type", expenseData.type);
     formData.append("amount", expenseData.amount);
-    if (expenseData.bill) {
-      formData.append("bill", expenseData.bill); // ✅ Append only if bill exists
-    }
+    if (expenseData.bill) formData.append("bill", expenseData.bill);
 
     try {
-      const response = await axios({
+      const res = await axios({
         method: editingExpense ? "put" : "post",
         url: editingExpense
           ? `http://localhost:8000/api/expenses/${editingExpense.id}/`
           : "http://localhost:8000/api/expenses/",
         data: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // ✅ Don't manually set Content-Type for FormData
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (editingExpense) {
-        // Update the existing expense in the state
-        setExpenses((prevExpenses) =>
-          prevExpenses.map((exp) =>
-            exp.id === editingExpense.id ? response.data : exp
-          )
-        );
-      } else {
-        // Add the new expense to the state
-        setExpenses((prev) => [...prev, response.data]);
-      }
+      setExpenses(prev =>
+        editingExpense
+          ? prev.map(e => (e.id === editingExpense.id ? res.data : e))
+          : [...prev, res.data]
+      );
 
       setShowExpense(false);
-      alert("Expense submitted successfully.");
-    } catch (error) {
-      console.error(
-        "Error submitting expense:",
-        error.response?.data || error.message
-      );
-      alert("Failed to submit expense.");
+    } catch (err) {
+      console.error("Submit failed:", err.response?.data || err);
+      alert("Failed to submit.");
     }
   };
 
   const handleEditExpense = (expense) => {
     setEditingExpense(expense);
-    setExpenseData(expense);
+    setExpenseData({
+      date: expense.date,
+      description: expense.description,
+      type: expense.expense_type,
+      bill: null,
+      amount: expense.amount,
+      isVerified: expense.is_verified,
+      isRefunded: expense.is_refunded,
+    });
     setShowExpense(true);
   };
 
-  const handlePagination = (pageNumber) => setCurrentPage(pageNumber);
-
-  const currentMonth = dayjs().format("YYYY-MM");
-  const filteredByMonth = filteredExpenses.filter(
-    (exp) => dayjs(exp.date).format("YYYY-MM") === currentMonth
-  );
-  const [selectedMonth] = useState("");
-
-  const finalExpenses =
-    selectedMonth === "" ? filteredExpenses : filteredByMonth;
-
-  const indexOfLastExpense = currentPage * itemsPerPage;
-  const indexOfFirstExpense = indexOfLastExpense - itemsPerPage;
-  const currentExpenses = finalExpenses.slice(
-    indexOfFirstExpense,
-    indexOfLastExpense
-  );
-
-  const calculateTotalAmount = () => {
-    if (!Array.isArray(finalExpenses)) return "0.00";
-
-    const total = finalExpenses.reduce((sum, exp) => {
-      const amount = parseFloat(exp?.amount);
-      if (isNaN(amount)) {
-        return sum; // Skip invalid amounts
-      }
-      return sum + amount;
-    }, 0);
-
-    return total.toFixed(2);
+  const handleDeleteExpense = async (id) => {
+    if (!window.confirm("Confirm delete?")) return;
+    const token = localStorage.getItem("access");
+    try {
+      await axios.delete(`http://localhost:8000/api/expenses/${id}/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setExpenses(prev => prev.filter(e => e.id !== id));
+    } catch (err) {
+      console.error("Delete failed:", err.response?.data || err);
+      alert("Failed to delete.");
+    }
   };
 
   const handleBillUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
-      const fileSize = file.size / 1024 / 1024; // Convert bytes to MB
-      if (fileSize > 5) {
-        alert("File size exceeds the 5MB limit.");
-        return;
-      }
-      if (!allowedTypes.includes(file.type)) {
-        alert("Only PDF, JPG, or PNG files are allowed!");
-        return;
-      }
-
+    const allowed = ["application/pdf", "image/jpeg", "image/png"];
+    if (file && file.size / 1024 / 1024 <= 5 && allowed.includes(file.type)) {
       setExpenseData({ ...expenseData, bill: file });
+    } else {
+      alert("Invalid file: Must be PDF/JPG/PNG & under 5MB.");
     }
   };
 
-  const [viewingMyData, setViewingMyData] = useState(false);
+  const finalExpenses = filteredExpenses;
+  const indexOfLast = currentPage * itemsPerPage;
+  const currentExpenses = finalExpenses.slice(indexOfLast - itemsPerPage, indexOfLast);
 
-  const handleViewToggle = async () => {
-    const token = localStorage.getItem("access");
-    if (!token) {
-      alert("Please login to continue.");
-      return;
-    }
-
-    if (!viewingMyData) {
-      // Fetch user's own data
-      const response = await axios.get(
-        "http://localhost:8000/api/expenses/mydata/",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      console.log("user data", response.data);
-      setExpenses(response.data);
-    } else {
-      // Fetch all expenses again
-      const response = await axios.get("http://localhost:8000/api/expenses/", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setExpenses(response.data);
-    }
-
-    setViewingMyData(!viewingMyData);
+  const calculateTotal = () => {
+    const total = finalExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    return total.toFixed(2);
   };
 
   return (
     <div className="p-6 bg-white rounded-lg">
-      {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-900">
-          Grand Total: ₹ {calculateTotalAmount()}
-        </h2>
+        <h2 className="text-xl font-bold text-gray-900">Grand Total: ₹ {calculateTotal()}</h2>
         <div className="flex gap-2">
-          <button
-            className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-2"
-            onClick={showfilter}
-          >
+          <button onClick={showfilter} className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-2">
             <FaFilter /> Filter
           </button>
-          <button
-            className="bg-[#124451] text-white px-4 py-1 rounded-full"
-            onClick={showexpense}
-          >
+          <button onClick={showexpense} className="bg-[#124451] text-white px-4 py-1 rounded-full">
             Add Expense
           </button>
         </div>
       </div>
-      <button
-        className="bg-[#124451] text-white px-4 py-1 rounded-full"
-        onClick={handleViewToggle}
-      >
+      <button onClick={() => setViewingMyData(!viewingMyData)} className="bg-[#124451] text-white px-4 py-1 rounded-full">
         {viewingMyData ? "View All Data" : "View My Data"}
       </button>
 
-      {/* Filter Modal */}
+      {loading ? (
+        <p className="text-center text-gray-500 mt-6">Loading...</p>
+      ) : currentExpenses.length === 0 ? (
+        <p className="text-center text-gray-500 mt-6">No expenses found.</p>
+      ) : (
+        <div className="overflow-x-auto mt-4">
+          <table className="w-full">
+            <thead className="border-b border-gray-100 text-gray-500 text-sm font-medium">
+              <tr>
+                <th className="p-3 text-left">S.No</th>
+                <th className="p-3 text-left">Date</th>
+                <th className="p-3 text-left">Description</th>
+                <th className="p-3 text-left">Type</th>
+                <th className="p-3 text-left">Bill</th>
+                <th className="p-3 text-left">Amount</th>
+                <th className="p-3 text-left">Verified</th>
+                <th className="p-3 text-left">Refunded</th>
+                <th className="p-3 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-800 text-sm">
+              {currentExpenses.map((exp, i) => (
+                <tr key={exp.id} className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                  <td className="p-3">{(currentPage - 1) * itemsPerPage + i + 1}</td>
+                  <td className="p-3">{dayjs(exp.date).format("DD/MM/YYYY")}</td>
+                  <td className="p-3">{exp.description}</td>
+                  <td className="p-3">{exp.expense_type}</td>
+                  <td className="p-3">
+                    {exp.bill_url ? (
+                      <a href={exp.bill_url} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                        View
+                      </a>
+                    ) : <span className="text-gray-500">N/A</span>}
+                  </td>
+                  <td className="p-3">₹ {parseFloat(exp.amount).toFixed(2)}</td>
+                  <td className="p-3">
+                    {exp.is_verified ? (
+                      <span className="text-green-600 flex items-center gap-1"><FaCheckCircle /> Verified</span>
+                    ) : (
+                      <span className="text-red-600 flex items-center gap-1"><FaTimesCircle /> Not Verified</span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {exp.is_refunded ? (
+                      <span className="text-green-600 flex items-center gap-1"><FaRedo /> Refunded</span>
+                    ) : (
+                      <span className="text-[#264653] flex items-center gap-1"><FaRedo /> Pending</span>
+                    )}
+                  </td>
+                  <td className="p-3 flex gap-2">
+                    <button onClick={() => handleEditExpense(exp)} className="text-blue-600"><FaEdit /></button>
+                    <button onClick={() => handleDeleteExpense(exp.id)} className="text-red-600"><FaTrash /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      <div className="flex justify-center mt-4 gap-2">
+        <button
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage(p => p - 1)}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+        >
+          <FaChevronLeft />
+        </button>
+        {Array.from({ length: Math.ceil(finalExpenses.length / itemsPerPage) }).map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrentPage(i + 1)}
+            className={`px-3 py-1 rounded ${i + 1 === currentPage ? "bg-[#124451] text-white" : "bg-gray-100"}`}
+          >
+            {i + 1}
+          </button>
+        ))}
+        <button
+          disabled={currentPage === Math.ceil(finalExpenses.length / itemsPerPage)}
+          onClick={() => setCurrentPage(p => p + 1)}
+          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+        >
+          <FaChevronRight />
+        </button>
+      </div>
+
+       {/* Filter Modal */}
       {showFilter && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg w-96 space-y-3">
@@ -470,126 +434,6 @@ const ExpenseTable = () => {
           </div>
         </div>
       )}
-
-      {/* Table */}
-      <div className="overflow-x-auto mt-4">
-        <table className="w-full">
-          <thead className="border-b border-gray-100 text-gray-500 text-[14px] font-medium">
-            <tr>
-              <th className="p-3 text-left">S.No</th>
-              <th className="p-3 text-left">Date</th>
-              <th className="p-3 text-left">Description</th>
-              <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">Bill</th>
-              <th className="p-3 text-left">Amount</th>
-              <th className="p-3 text-left">Is Verified</th>
-              <th className="p-3 text-left">Is Refunded</th>
-              <th className="p-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-800 text-sm">
-            {currentExpenses.map((exp, i) => (
-              <tr
-                key={exp.id}
-                className={`${i % 2 === 0 ? "bg-gray-50" : "bg-white"}`}
-              >
-                <td className="p-3">{indexOfFirstExpense + i + 1}</td>
-                <td className="p-3">{dayjs(exp.date).format("DD/MM/YYYY")}</td>
-                <td className="p-3">{exp.description}</td>
-                <td className="p-3">{exp.expense_type}</td>
-                <td className="p-3">
-                  {exp.bill ? (
-                    <a
-                      href={exp.bill}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 underline"
-                    >
-                      View Bill
-                    </a>
-                  ) : (
-                    <span className="text-gray-500">N/A</span>
-                  )}
-                </td>
-
-                <td className="p-3">₹ {parseFloat(exp.amount).toFixed(2)}</td>
-                <td className="p-3">
-                  {exp.is_verified ? (
-                    <div className="flex items-center gap-1 text-green-600">
-                      <FaCheckCircle /> Verified
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-red-600">
-                      <FaTimesCircle /> Not Verified
-                    </div>
-                  )}
-                </td>
-                <td className="p-3">
-                  {exp.is_refunded ? (
-                    <div className="flex items-center gap-1 text-green-600">
-                      <FaRedo /> Refunded
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-[#264653]">
-                      <FaRedo /> Pending
-                    </div>
-                  )}
-                </td>
-                <td className="p-3">
-                  <button
-                    onClick={() => handleEditExpense(exp)}
-                    className="text-blue-600"
-                  >
-                    <FaEdit />
-                    Edit
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination Controls */}
-      <div className="flex justify-center items-center mt-4 gap-2">
-        <button
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          onClick={() => handlePagination(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          <FaChevronLeft />
-        </button>
-
-        {/* Page Numbers */}
-        {Array.from({
-          length: Math.ceil(finalExpenses.length / itemsPerPage),
-        }).map((_, index) => {
-          const pageNum = index + 1;
-          return (
-            <button
-              key={pageNum}
-              onClick={() => handlePagination(pageNum)}
-              className={`px-3 py-1 rounded ${
-                pageNum === currentPage
-                  ? "bg-[#124451] text-white"
-                  : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              {pageNum}
-            </button>
-          );
-        })}
-
-        <button
-          className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          onClick={() => handlePagination(currentPage + 1)}
-          disabled={
-            currentPage === Math.ceil(finalExpenses.length / itemsPerPage)
-          }
-        >
-          <FaChevronRight />
-        </button>
-      </div>
     </div>
   );
 };

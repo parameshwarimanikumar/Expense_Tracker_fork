@@ -277,7 +277,7 @@ const RegularExpense = () => {
                 Prev
               </button>
               <span className="flex items-center justify-center font-semibold px-3 py-1 border rounded">
-                Page {currentPage} of {totalPages}
+                 {currentPage} of {totalPages}
               </span>
               <button
                 className="px-3 py-1 bg-[#124451] text-white rounded"

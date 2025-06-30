@@ -376,11 +376,13 @@ def my_expenses(request):
     return Response(serializer.data)
 
 
+
 @api_view(['GET', 'PUT', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def expense_detail(request, pk):
     # 1) Fetch or 404
     expense = get_object_or_404(Expense, pk=pk)
+    user = request.user
 
     # 2) GET
     if request.method == 'GET':
@@ -390,9 +392,17 @@ def expense_detail(request, pk):
     # 3) PUT (edit)
     elif request.method == 'PUT':
         data = request.data
-        user = request.user
 
-        # Optional: enforce only admin can change verification/refund
+        # ✅ Prevent non-admins from editing others' expenses
+        if expense.user != user and (
+            not user.role or user.role.role_name.lower() != 'admin'
+        ):
+            return Response(
+                {"error": "You do not have permission to edit this expense."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # ✅ Optional: Enforce only admin can change verification/refund
         if ('is_verified' in data or 'is_refunded' in data) and (
             not user.role or user.role.role_name.lower() != 'admin'
         ):
@@ -404,22 +414,22 @@ def expense_detail(request, pk):
         try:
             with db_transaction.atomic():
                 # — Update simple fields —
-                expense.description  = data.get('description', expense.description)
+                expense.description = data.get('description', expense.description)
                 expense.expense_type = data.get('expense_type', expense.expense_type)
-                expense.amount       = data.get('amount', expense.amount)
+                expense.amount = data.get('amount', expense.amount)
 
                 if 'is_verified' in data:
                     expense.is_verified = data['is_verified']
                 if 'is_refunded' in data:
                     expense.is_refunded = data['is_refunded']
 
-                # — NEW: handle bill file replacement —
+                # ✅ Handle bill file replacement
                 if 'bill' in request.FILES:
                     expense.bill = request.FILES['bill']
 
                 expense.save()
 
-                # Optional: send notification when admin verifies
+                # ✅ Send notification when admin verifies
                 if data.get('is_verified') is True:
                     Notification.objects.create(
                         user=request.user,
@@ -431,21 +441,22 @@ def expense_detail(request, pk):
                         is_read=False
                     )
 
-                # — Recalculate or recreate associated Order/Transaction as you did before —
+                # ✅ Correct user for order creation: use expense.user
                 order = (
-                    Order.objects.filter(created_user=user)
+                    Order.objects.filter(created_user=expense.user)
                     .order_by('-created_date')
                     .first()
                 )
                 if not order:
                     order = Order.objects.create(
-                        created_user=user,
+                        created_user=expense.user,
                         calculated_price=expense.amount
                     )
                 else:
                     order.calculated_price = expense.amount
                     order.save()
 
+                # ✅ Link transaction order
                 transaction_order, created = TransactionOrder.objects.get_or_create(
                     expense=expense,
                     defaults={'order_id': order}
@@ -460,11 +471,8 @@ def expense_detail(request, pk):
                     txn.status = 'Completed' if expense.is_refunded else 'Pending'
                     txn.save()
 
-                # — Return the updated expense, including new bill_url —
-                out_serializer = ExpenseSerializer(
-                    expense,
-                    context={'request': request}
-                )
+                # ✅ Return updated expense
+                out_serializer = ExpenseSerializer(expense, context={'request': request})
                 return Response(out_serializer.data, status=status.HTTP_200_OK)
 
         except Exception as exc:
@@ -475,9 +483,9 @@ def expense_detail(request, pk):
 
     # 4) DELETE
     else:
-        if expense.user != request.user and (
-            not request.user.role or
-            request.user.role.role_name.lower() != 'admin'
+        # ✅ Only allow owner or admin to delete
+        if expense.user != user and (
+            not user.role or user.role.role_name.lower() != 'admin'
         ):
             return Response(
                 {"error": "You do not have permission to delete this expense."},
@@ -485,8 +493,6 @@ def expense_detail(request, pk):
             )
         expense.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def order_list_create(request):

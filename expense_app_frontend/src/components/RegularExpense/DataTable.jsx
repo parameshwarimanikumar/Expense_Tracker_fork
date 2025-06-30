@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileExcel } from "@fortawesome/free-solid-svg-icons";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getGroupedOrders } from "../../api_service/api";
@@ -101,15 +102,20 @@ const DataTable = () => {
     const ws = XLSX.utils.aoa_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, "Data");
     const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(new Blob([buffer]), `orders_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    saveAs(
+      new Blob([buffer]),
+      `orders_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
   };
 
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg min-h-screen">
-      {/* Header Section */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <h2 className="text-lg md:text-xl font-bold text-[#124451]">
-          {loading ? "Loading..." : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
+          {loading
+            ? "Loading..."
+            : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
         </h2>
         <div className="flex gap-2 w-full md:w-auto">
           <button
@@ -122,7 +128,7 @@ const DataTable = () => {
         </div>
       </div>
 
-      {/* Column Headers with Dropdown Filters */}
+      {/* Filters */}
       {!loading && (
         <div className="grid grid-cols-7 gap-2 mb-2 p-2 bg-gray-50 text-xs font-medium text-gray-600">
           {/* Date Filter */}
@@ -148,7 +154,9 @@ const DataTable = () => {
             <select
               className="w-full p-1 rounded text-xs"
               value={filters.item_name}
-              onChange={(e) => setFilters({ ...filters, item_name: e.target.value })}
+              onChange={(e) =>
+                setFilters({ ...filters, item_name: e.target.value })
+              }
             >
               <option value="">All</option>
               {uniqueItems.map((item, i) => (
@@ -177,14 +185,22 @@ const DataTable = () => {
           </div>
 
           {/* Static Headers */}
-          <div className="text-center flex items-end justify-center pb-1 font-semibold">Count</div>
-          <div className="text-center flex items-end justify-center pb-1 font-semibold">Price/item</div>
-          <div className="text-center flex items-end justify-center pb-1 font-semibold">Total/item</div>
-          <div className="text-center flex items-end justify-center pb-1 font-semibold">Total/date</div>
+          <div className="text-center flex items-end justify-center pb-1 font-semibold">
+            Count
+          </div>
+          <div className="text-center flex items-end justify-center pb-1 font-semibold">
+            Price/item
+          </div>
+          <div className="text-center flex items-end justify-center pb-1 font-semibold">
+            Total/item
+          </div>
+          <div className="text-center flex items-end justify-center pb-1 font-semibold">
+            Total/date
+          </div>
         </div>
       )}
 
-      {/* Data Rows */}
+      {/* Table Body */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#124451]" />
@@ -194,7 +210,10 @@ const DataTable = () => {
       ) : (
         <>
           {Object.entries(groupedItems).map(([date, items], idx) => {
-            const rowTotal = items.reduce((sum, item) => sum + item.count * item.price, 0);
+            const rowTotal = items.reduce(
+              (sum, item) => sum + item.count * item.price,
+              0
+            );
             return (
               <div
                 key={date}
@@ -205,27 +224,37 @@ const DataTable = () => {
                 <div className="flex items-center">{formatDate(date)}</div>
                 <div>
                   {items.map((item, i) => (
-                    <div key={i} className="py-1">{item.item_name}</div>
+                    <div key={i} className="py-1">
+                      {item.item_name}
+                    </div>
                   ))}
                 </div>
                 <div>
                   {items.map((item, i) => (
-                    <div key={i} className="text-center py-1">{item.user}</div>
+                    <div key={i} className="text-center py-1">
+                      {item.user}
+                    </div>
                   ))}
                 </div>
                 <div>
                   {items.map((item, i) => (
-                    <div key={i} className="text-center py-1">{item.count}</div>
+                    <div key={i} className="text-center py-1">
+                      {item.count}
+                    </div>
                   ))}
                 </div>
                 <div>
                   {items.map((item, i) => (
-                    <div key={i} className="text-center py-1">₹{item.price.toFixed(2)}</div>
+                    <div key={i} className="text-center py-1">
+                      ₹{item.price.toFixed(2)}
+                    </div>
                   ))}
                 </div>
                 <div>
                   {items.map((item, i) => (
-                    <div key={i} className="text-center py-1">₹{(item.count * item.price).toFixed(2)}</div>
+                    <div key={i} className="text-center py-1">
+                      ₹{(item.count * item.price).toFixed(2)}
+                    </div>
                   ))}
                 </div>
                 <div className="flex items-center justify-center font-semibold">
@@ -239,23 +268,38 @@ const DataTable = () => {
 
       {/* Pagination */}
       {!loading && totalPages > 1 && (
-        <div className="flex justify-center gap-4 mt-8">
+        <div className="flex justify-center items-center mt-4 gap-2">
           <button
-            className="px-3 py-1 bg-[#124451] text-white rounded"
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
           >
-            Prev
+            <FaChevronLeft />
           </button>
-          <span className="flex items-center justify-center font-semibold px-3 py-1 border rounded">
-            Page {currentPage} of {totalPages}
-          </span>
+
+          {Array.from({ length: totalPages }).map((_, index) => {
+            const pageNum = index + 1;
+            return (
+              <button
+                key={pageNum}
+                onClick={() => handlePageChange(pageNum)}
+                className={`px-3 py-1 rounded ${
+                  pageNum === currentPage
+                    ? "bg-[#124451] text-white"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+
           <button
-            className="px-3 py-1 bg-[#124451] text-white rounded"
+            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
           >
-            Next
+            <FaChevronRight />
           </button>
         </div>
       )}
