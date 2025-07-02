@@ -493,6 +493,7 @@ def expense_detail(request, pk):
             )
         expense.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def order_list_create(request):
@@ -654,16 +655,18 @@ def order_item_list(request):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def order_item_detail(request, pk):
     order_item = get_object_or_404(OrderItem, id=pk)
 
+    is_admin = request.user.role and request.user.role.role_name.lower() == 'admin'
+    is_owner = order_item.order.created_user == request.user  # ✅ Based on order ownership
+
     if request.method in ['PUT', 'PATCH', 'DELETE']:
-        if order_item.added_date.date() != timezone.now().date():
+        if not is_admin and not is_owner:
             return Response(
-                {"error": "Only today's records can be edited or deleted"},
+                {"error": "You do not have permission to modify this item."},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -672,19 +675,28 @@ def order_item_detail(request, pk):
         return Response(serializer.data)
 
     elif request.method in ["PUT", "PATCH"]:
-        serializer = OrderItemSerializer(order_item, data=request.data, partial=(request.method == "PATCH"))
-        if serializer.is_valid():
-            serializer.save()
+        try:
+            new_count = int(request.data.get("count", 0))
+            order_item.morning_count = new_count // 2
+            order_item.evening_count = new_count - order_item.morning_count
+
+            if "item" in request.data:
+                order_item.item_id = request.data["item"]
+            if "added_date" in request.data:
+                order_item.added_date = request.data["added_date"]
+
+            order_item.save()
             order_item.order.update_total_price()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(OrderItemSerializer(order_item).data)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == "DELETE":
         order = order_item.order
         order_item.delete()
         order.update_total_price()
         return Response({"message": "OrderItem deleted"}, status=status.HTTP_204_NO_CONTENT)
-
 
 # Transaction Views
 
@@ -1003,6 +1015,7 @@ def order_items_grouped_by_date(request):
 
             if key not in date_items:
                 date_items[key] = {
+                    'id': item.id,  
                     'item_id': item.item.id,
                     'item_name': item.item.item_name,
                     'price': float(item.item.item_price),

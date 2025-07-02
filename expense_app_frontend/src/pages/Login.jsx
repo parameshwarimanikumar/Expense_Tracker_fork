@@ -24,20 +24,25 @@ function Login() {
     try {
       const data = await loginUser(email, password);
 
-      // Save tokens and user
+      // ✅ Save tokens and user details
       localStorage.setItem('access', data.access);
       localStorage.setItem('refresh', data.refresh);
       setAuthToken(data.access);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      const userRole = data?.user?.role?.role_name || 'User';
-      console.log('Logged-in user role:', userRole); // Debug
+      // ✅ Save normalized role and username
+      const userRole = (data?.user?.role?.role_name || 'user').toLowerCase();
+      localStorage.setItem('role', userRole);
+      localStorage.setItem('username', data.user.username);
 
-      // ✅ Navigate immediately based on role
-      if (userRole === 'Admin') {
+      console.log('Logged-in user role:', userRole);
+      console.log('Logged-in username:', data.user.username);
+
+      // ✅ Navigate based on role
+      if (userRole === 'admin') {
         navigate('/admin-dashboard');
       } else {
-        navigate('/user-dashboard'); // or use '/' if your route is different
+        navigate('/user-dashboard');
       }
     } catch (err) {
       console.error(err);

@@ -125,6 +125,7 @@ class BillSerializer(serializers.ModelSerializer):
 
 class OrderItemSerializer(serializers.ModelSerializer):
     item = serializers.PrimaryKeyRelatedField(queryset=Item.objects.all())
+    count = serializers.SerializerMethodField()
     added_date = serializers.DateTimeField(
         format="%Y-%m-%dT%H:%M:%S.%fZ",
         input_formats=[
@@ -141,6 +142,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = ['id', 'item', 'count', 'added_date', 'order']
 
+    def get_count(self, obj):
+        return (obj.morning_count or 0) + (obj.evening_count or 0)
 
 class OrderSerializer(serializers.ModelSerializer):
     order_items = OrderItemSerializer(many=True, source='orderitem_set')

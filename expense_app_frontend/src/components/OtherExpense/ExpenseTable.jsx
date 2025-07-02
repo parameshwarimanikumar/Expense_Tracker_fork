@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from "react";
 import {
-  FaFilter, FaFileInvoice, FaCheckCircle, FaTimesCircle,
-  FaRedo, FaEdit, FaTrash, FaChevronLeft, FaChevronRight,
+  FaFilter,
+  FaFileInvoice,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaRedo,
+  FaEdit,
+  FaTrash,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 import dayjs from "dayjs";
 import axios from "axios";
@@ -10,14 +17,21 @@ const ExpenseTable = () => {
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [filters, setFilters] = useState({
-    type: "", isVerified: "", startDate: "", endDate: ""
+    type: "",
+    isVerified: "",
+    isRefunded: "",
   });
   const [showFilter, setShowFilter] = useState(false);
   const [showExpense, setShowExpense] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [expenseData, setExpenseData] = useState({
-    date: "", description: "", type: "Product", bill: null,
-    amount: "", isVerified: false, isRefunded: false,
+    date: "",
+    description: "",
+    type: "Product",
+    bill: null,
+    amount: "",
+    isVerified: false,
+    isRefunded: false,
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -34,7 +48,7 @@ const ExpenseTable = () => {
           ? "http://localhost:8000/api/expenses/mydata/"
           : "http://localhost:8000/api/expenses/";
         const response = await axios.get(url, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
         setExpenses(response.data);
       } catch (error) {
@@ -48,30 +62,55 @@ const ExpenseTable = () => {
 
   useEffect(() => {
     let temp = [...expenses];
-    if (filters.type) temp = temp.filter(e => e.expense_type === filters.type);
+    if (filters.type)
+      temp = temp.filter((e) => e.expense_type === filters.type);
     if (filters.isVerified !== "")
-      temp = temp.filter(e => e.is_verified === (filters.isVerified === "true"));
+      temp = temp.filter(
+        (e) => e.is_verified === (filters.isVerified === "true")
+      );
+    if (filters.isRefunded !== "")
+      temp = temp.filter(
+        (e) => e.is_refunded === (filters.isRefunded === "true")
+      );
     if (filters.startDate && filters.endDate)
-      temp = temp.filter(e => {
+      temp = temp.filter((e) => {
         const d = dayjs(e.date);
-        return d.isAfter(dayjs(filters.startDate).subtract(1, 'day')) &&
-               d.isBefore(dayjs(filters.endDate).add(1, 'day'));
+        return (
+          d.isAfter(dayjs(filters.startDate).subtract(1, "day")) &&
+          d.isBefore(dayjs(filters.endDate).add(1, "day"))
+        );
       });
+
     setFilteredExpenses(temp);
     setCurrentPage(1);
   }, [expenses, filters]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
-  const resetFilters = () => setFilters({ type: "", isVerified: "", startDate: "", endDate: "" });
-  const showfilter = () => setShowFilter(!showFilter);
+  const resetFilters = () =>
+    setFilters({
+      type: "",
+      isVerified: "",
+      isRefunded: "",
+      startDate: "",
+      endDate: "",
+    });
+
   const showexpense = () => {
     setShowExpense(!showExpense);
     setEditingExpense(null);
-    setExpenseData({ date: "", description: "", type: "Product", bill: null, amount: "", isVerified: false, isRefunded: false });
+    setExpenseData({
+      date: "",
+      description: "",
+      type: "Product",
+      bill: null,
+      amount: "",
+      isVerified: false,
+      isRefunded: false,
+    });
   };
 
   const handleExpenseSubmit = async (e) => {
@@ -94,16 +133,16 @@ const ExpenseTable = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setExpenses(prev =>
+      setExpenses((prev) =>
         editingExpense
-          ? prev.map(e => (e.id === editingExpense.id ? res.data : e))
+          ? prev.map((e) => (e.id === editingExpense.id ? res.data : e))
           : [...prev, res.data]
       );
 
       setShowExpense(false);
     } catch (err) {
       console.error("Submit failed:", err.response?.data || err);
-      alert("Failed to submit.");
+      alert("your are not own user or admin Failed to submit.");
     }
   };
 
@@ -126,12 +165,12 @@ const ExpenseTable = () => {
     const token = localStorage.getItem("access");
     try {
       await axios.delete(`http://localhost:8000/api/expenses/${id}/`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setExpenses(prev => prev.filter(e => e.id !== id));
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
     } catch (err) {
       console.error("Delete failed:", err.response?.data || err);
-      alert("Failed to delete.");
+      alert("your are not own user or admin Failed to delete.");
     }
   };
 
@@ -147,27 +186,44 @@ const ExpenseTable = () => {
 
   const finalExpenses = filteredExpenses;
   const indexOfLast = currentPage * itemsPerPage;
-  const currentExpenses = finalExpenses.slice(indexOfLast - itemsPerPage, indexOfLast);
+  const currentExpenses = finalExpenses.slice(
+    indexOfLast - itemsPerPage,
+    indexOfLast
+  );
 
   const calculateTotal = () => {
-    const total = finalExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+    const total = finalExpenses.reduce(
+      (sum, e) => sum + parseFloat(e.amount || 0),
+      0
+    );
     return total.toFixed(2);
   };
 
   return (
     <div className="p-6 bg-white rounded-lg">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Grand Total: ₹ {calculateTotal()}</h2>
+        <h2 className="text-xl font-bold text-gray-900">
+          Grand Total: ₹ {calculateTotal()}
+        </h2>
         <div className="flex gap-2">
-          <button onClick={showfilter} className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-2">
-            <FaFilter /> Filter
+          <button
+            onClick={resetFilters}
+            className="bg-gray-300 text-black px-4 py-1 rounded-full hover:bg-gray-400"
+          >
+            Reset Filters
           </button>
-          <button onClick={showexpense} className="bg-[#124451] text-white px-4 py-1 rounded-full">
+          <button
+            onClick={showexpense}
+            className="bg-[#124451] text-white px-4 py-1 rounded-full"
+          >
             Add Expense
           </button>
         </div>
       </div>
-      <button onClick={() => setViewingMyData(!viewingMyData)} className="bg-[#124451] text-white px-4 py-1 rounded-full">
+      <button
+        onClick={() => setViewingMyData(!viewingMyData)}
+        className="bg-[#124451] text-white px-4 py-1 rounded-full"
+      >
         {viewingMyData ? "View All Data" : "View My Data"}
       </button>
 
@@ -183,46 +239,123 @@ const ExpenseTable = () => {
                 <th className="p-3 text-left">S.No</th>
                 <th className="p-3 text-left">Date</th>
                 <th className="p-3 text-left">Description</th>
-                <th className="p-3 text-left">Type</th>
+                <th className="p-3 text-left">
+                  <div className="flex flex-col">
+                    <span>Type</span>
+                    <select
+                      name="type"
+                      value={filters.type}
+                      onChange={handleFilterChange}
+                      className="mt-1 text-black border border-gray-300 rounded px-1 py-[2px]"
+                    >
+                      <option value="">All</option>
+                      <option value="Product">Product</option>
+                      <option value="Food">Food</option>
+                      <option value="Service">Service</option>
+                    </select>
+                  </div>
+                </th>
                 <th className="p-3 text-left">Bill</th>
                 <th className="p-3 text-left">Amount</th>
-                <th className="p-3 text-left">Verified</th>
-                <th className="p-3 text-left">Refunded</th>
+                <th className="p-3 text-left">
+                  <div className="flex flex-col">
+                    <span>Verified</span>
+                    <select
+                      name="isVerified"
+                      value={filters.isVerified}
+                      onChange={handleFilterChange}
+                      className="mt-1 text-black border border-gray-300 rounded px-1 py-[2px]"
+                    >
+                      <option value="">All</option>
+                      <option value="true">Verified</option>
+                      <option value="false">Not Verified</option>
+                    </select>
+                  </div>
+                </th>
+                <th className="p-3 text-left">
+                  <div className="flex flex-col">
+                    <span>Refunded</span>
+                    <select
+                      name="isRefunded"
+                      value={filters.isRefunded}
+                      onChange={handleFilterChange}
+                      className="mt-1 text-black border border-gray-300 rounded px-1 py-[2px]"
+                    >
+                      <option value="">All</option>
+                      <option value="true">Refunded</option>
+                      <option value="false">Pending</option>
+                    </select>
+                  </div>
+                </th>
+
                 <th className="p-3 text-left">Actions</th>
               </tr>
             </thead>
+
             <tbody className="text-gray-800 text-sm">
               {currentExpenses.map((exp, i) => (
-                <tr key={exp.id} className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                  <td className="p-3">{(currentPage - 1) * itemsPerPage + i + 1}</td>
-                  <td className="p-3">{dayjs(exp.date).format("DD/MM/YYYY")}</td>
+                <tr
+                  key={exp.id}
+                  className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}
+                >
+                  <td className="p-3">
+                    {(currentPage - 1) * itemsPerPage + i + 1}
+                  </td>
+                  <td className="p-3">
+                    {dayjs(exp.date).format("DD/MM/YYYY")}
+                  </td>
                   <td className="p-3">{exp.description}</td>
                   <td className="p-3">{exp.expense_type}</td>
                   <td className="p-3">
                     {exp.bill_url ? (
-                      <a href={exp.bill_url} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                      <a
+                        href={exp.bill_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 underline"
+                      >
                         View
                       </a>
-                    ) : <span className="text-gray-500">N/A</span>}
+                    ) : (
+                      <span className="text-gray-500">N/A</span>
+                    )}
                   </td>
                   <td className="p-3">₹ {parseFloat(exp.amount).toFixed(2)}</td>
                   <td className="p-3">
                     {exp.is_verified ? (
-                      <span className="text-green-600 flex items-center gap-1"><FaCheckCircle /> Verified</span>
+                      <span className="text-green-600 flex items-center gap-1">
+                        <FaCheckCircle /> Verified
+                      </span>
                     ) : (
-                      <span className="text-red-600 flex items-center gap-1"><FaTimesCircle /> Not Verified</span>
+                      <span className="text-red-600 flex items-center gap-1">
+                        <FaTimesCircle /> Not Verified
+                      </span>
                     )}
                   </td>
                   <td className="p-3">
                     {exp.is_refunded ? (
-                      <span className="text-green-600 flex items-center gap-1"><FaRedo /> Refunded</span>
+                      <span className="text-green-600 flex items-center gap-1">
+                        <FaRedo /> Refunded
+                      </span>
                     ) : (
-                      <span className="text-[#264653] flex items-center gap-1"><FaRedo /> Pending</span>
+                      <span className="text-[#264653] flex items-center gap-1">
+                        <FaRedo /> Pending
+                      </span>
                     )}
                   </td>
                   <td className="p-3 flex gap-2">
-                    <button onClick={() => handleEditExpense(exp)} className="text-blue-600"><FaEdit /></button>
-                    <button onClick={() => handleDeleteExpense(exp.id)} className="text-red-600"><FaTrash /></button>
+                    <button
+                      onClick={() => handleEditExpense(exp)}
+                      className="text-blue-600"
+                    >
+                      <FaEdit />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteExpense(exp.id)}
+                      className="text-red-600"
+                    >
+                      <FaTrash />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -235,30 +368,36 @@ const ExpenseTable = () => {
       <div className="flex justify-center mt-4 gap-2">
         <button
           disabled={currentPage === 1}
-          onClick={() => setCurrentPage(p => p - 1)}
+          onClick={() => setCurrentPage((p) => p - 1)}
           className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
         >
           <FaChevronLeft />
         </button>
-        {Array.from({ length: Math.ceil(finalExpenses.length / itemsPerPage) }).map((_, i) => (
+        {Array.from({
+          length: Math.ceil(finalExpenses.length / itemsPerPage),
+        }).map((_, i) => (
           <button
             key={i}
             onClick={() => setCurrentPage(i + 1)}
-            className={`px-3 py-1 rounded ${i + 1 === currentPage ? "bg-[#124451] text-white" : "bg-gray-100"}`}
+            className={`px-3 py-1 rounded ${
+              i + 1 === currentPage ? "bg-[#124451] text-white" : "bg-gray-100"
+            }`}
           >
             {i + 1}
           </button>
         ))}
         <button
-          disabled={currentPage === Math.ceil(finalExpenses.length / itemsPerPage)}
-          onClick={() => setCurrentPage(p => p + 1)}
+          disabled={
+            currentPage === Math.ceil(finalExpenses.length / itemsPerPage)
+          }
+          onClick={() => setCurrentPage((p) => p + 1)}
           className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
         >
           <FaChevronRight />
         </button>
       </div>
 
-       {/* Filter Modal */}
+      {/* Filter Modal */}
       {showFilter && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg w-96 space-y-3">
@@ -290,26 +429,7 @@ const ExpenseTable = () => {
                 <option value="false">Not Verified</option>
               </select>
             </div>
-            <div>
-              <label className="block mb-1">Start Date</label>
-              <input
-                type="date"
-                name="startDate"
-                value={filters.startDate}
-                onChange={handleFilterChange}
-                className="w-full border p-2 rounded"
-              />
-            </div>
-            <div>
-              <label className="block mb-1">End Date</label>
-              <input
-                type="date"
-                name="endDate"
-                value={filters.endDate}
-                onChange={handleFilterChange}
-                className="w-full border p-2 rounded"
-              />
-            </div>
+
             <div className="flex justify-between mt-4">
               <button
                 className="bg-gray-300 px-4 py-2 rounded"

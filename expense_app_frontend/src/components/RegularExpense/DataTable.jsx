@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileExcel } from "@fortawesome/free-solid-svg-icons";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaEdit, FaTrash } from "react-icons/fa";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getGroupedOrders } from "../../api_service/api";
@@ -14,6 +15,15 @@ const DataTable = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const currentUser = localStorage.getItem("username");
+  const userRole = (localStorage.getItem("role") || "").toLowerCase();
+  const [showEditItem, setShowEditItem] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    id: "",
+    item: "",
+    count: "",
+    date: "",
+  });
 
   const [uniqueDates, setUniqueDates] = useState([]);
   const [uniqueItems, setUniqueItems] = useState([]);
@@ -41,13 +51,15 @@ const DataTable = () => {
         Object.entries(data.results).forEach(([date, items]) => {
           datesSet.add(date);
           items.forEach((item) => {
-            itemsSet.add(item.item_name);
+            itemsSet.add(
+              JSON.stringify({ id: item.item_id, name: item.item_name })
+            );
             usersSet.add(item.user);
           });
         });
 
         setUniqueDates([...datesSet]);
-        setUniqueItems([...itemsSet]);
+        setUniqueItems([...itemsSet].map((s) => JSON.parse(s)));
         setUniqueUsers([...usersSet]);
       } catch (err) {
         console.error(err);
@@ -108,6 +120,52 @@ const DataTable = () => {
     );
   };
 
+  const handleDelete = async (itemId) => {
+    if (!window.confirm("Are you sure you want to delete this item?")) return;
+    try {
+      await axios.delete(`http://localhost:8000/api/order-items/${itemId}/`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access")}`,
+        },
+      });
+      fetchData(currentPage);
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert("❌ Failed to delete item.");
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const formattedDate = new Date(editFormData.date)
+        .toISOString()
+        .split("T")[0];
+      const payload = {
+        item: Number(editFormData.item),
+        count: Number(editFormData.count),
+        added_date: formattedDate,
+      };
+
+      await axios.put(
+        `http://localhost:8000/api/order-items/${editFormData.id}/`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access")}`,
+          },
+        }
+      );
+
+      setShowEditItem(false);
+      fetchData(currentPage);
+      alert("✅ Item updated.");
+    } catch (error) {
+      console.error("Edit failed:", error);
+      alert("❌ Failed to update item.");
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg min-h-screen">
       {/* Header */}
@@ -130,7 +188,7 @@ const DataTable = () => {
 
       {/* Filters */}
       {!loading && (
-        <div className="grid grid-cols-7 gap-2 mb-2 p-2 bg-gray-50 text-xs font-medium text-gray-600">
+        <div className="grid grid-cols-8 gap-2 mb-2 p-2 bg-gray-50 text-xs font-medium text-gray-600">
           {/* Date Filter */}
           <div>
             <div className="text-[11px] font-semibold mb-1">Date</div>
@@ -159,9 +217,9 @@ const DataTable = () => {
               }
             >
               <option value="">All</option>
-              {uniqueItems.map((item, i) => (
-                <option key={i} value={item}>
-                  {item}
+              {uniqueItems.map((itemObj, i) => (
+                <option key={i} value={itemObj.id}>
+                  {itemObj.name}
                 </option>
               ))}
             </select>
@@ -197,6 +255,76 @@ const DataTable = () => {
           <div className="text-center flex items-end justify-center pb-1 font-semibold">
             Total/date
           </div>
+          <div className="text-center flex items-end justify-center pb-1 font-semibold">
+            Actions
+          </div>
+        </div>
+      )}
+
+      {/* edit model */}
+
+      {showEditItem && (
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.7)] z-50 flex justify-center items-center">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <button
+              onClick={() => setShowEditItem(false)}
+              className="absolute top-2 right-3 text-2xl text-gray-600 hover:text-black"
+            >
+              ×
+            </button>
+            <h3 className="text-lg font-semibold mb-4 text-center">
+              Edit Item
+            </h3>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Date</label>
+                <input
+                  type="date"
+                  value={editFormData.date}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, date: e.target.value })
+                  }
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Item ID
+                </label>
+                <select
+                  value={editFormData.item}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, item: e.target.value })
+                  }
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="">-- Select Item --</option>
+                  {uniqueItems.map((itemObj, i) => (
+                    <option key={i} value={itemObj.id}>
+                      {itemObj.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Count</label>
+                <input
+                  type="number"
+                  value={editFormData.count}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, count: e.target.value })
+                  }
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <button
+                type="submit"
+                className="bg-[#124451] text-white w-full py-2 rounded"
+              >
+                Update
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
@@ -219,7 +347,7 @@ const DataTable = () => {
                 key={date}
                 className={`${
                   idx % 2 === 0 ? "bg-gray-100" : "bg-white"
-                } p-4 grid grid-cols-7`}
+                } p-4 grid grid-cols-8`}
               >
                 <div className="flex items-center">{formatDate(date)}</div>
                 <div>
@@ -259,6 +387,38 @@ const DataTable = () => {
                 </div>
                 <div className="flex items-center justify-center font-semibold">
                   ₹{rowTotal.toFixed(2)}
+                </div>
+                <div>
+                  {items.map((item, i) => (
+                    <div key={i} className="text-center py-1">
+                      {(userRole === "admin" || item.user === currentUser) && (
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => {
+                              setEditFormData({
+                                id: item.id,
+                                item: item.item_id,
+                                count: item.count,
+                                date: date,
+                              });
+                              setShowEditItem(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 text-xs"
+                            title="Edit"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="text-red-600 hover:text-red-800 text-xs"
+                            title="Delete"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             );

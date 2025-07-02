@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileExcel, faPlus } from "@fortawesome/free-solid-svg-icons";
+import {
+  faFileExcel,
+  faPlus,
+  faTrash,
+  faEdit,
+  faChevronLeft,
+  faChevronRight,
+} from "@fortawesome/free-solid-svg-icons";
+
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import AddItem from "../UpdateItem/Additem";
 import { getGroupedOrders } from "../../api_service/api";
+import axios from "axios";
 
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 5;
 
 const RegularExpense = () => {
   const [groupedItems, setGroupedItems] = useState({});
@@ -16,13 +25,23 @@ const RegularExpense = () => {
   const [showAddItem, setShowAddItem] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Dropdown filter states
   const [uniqueUsers, setUniqueUsers] = useState([]);
   const [uniqueItems, setUniqueItems] = useState([]);
   const [uniqueDates, setUniqueDates] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [showEditItem, setShowEditItem] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    id: "",
+    item: "",
+    count: "",
+    price: "",
+    date: "",
+  });
+
+  const currentUser = localStorage.getItem("username");
+  const userRole = (localStorage.getItem("role") || "").toLowerCase();
 
   const fetchGroupedData = useCallback(
     async (page) => {
@@ -38,7 +57,6 @@ const RegularExpense = () => {
         setTotalPrice(data.total_price);
         setTotalPages(data.total_pages);
 
-        // Extract unique values for dropdowns
         const usersSet = new Set();
         const itemsSet = new Set();
         const datesSet = new Set();
@@ -47,12 +65,14 @@ const RegularExpense = () => {
           datesSet.add(date);
           items.forEach((item) => {
             usersSet.add(item.user);
-            itemsSet.add(item.item_name);
+            itemsSet.add(
+              JSON.stringify({ id: item.item_id, name: item.item_name })
+            );
           });
         });
 
         setUniqueUsers([...usersSet]);
-        setUniqueItems([...itemsSet]);
+        setUniqueItems([...itemsSet].map((s) => JSON.parse(s)));
         setUniqueDates([...datesSet]);
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -112,6 +132,54 @@ const RegularExpense = () => {
     );
   };
 
+  const handleDelete = async (itemId) => {
+    const confirm = window.confirm(
+      "Are you sure you want to delete this item?"
+    );
+    if (!confirm) return;
+    try {
+      await axios.delete(`http://localhost:8000/api/order-items/${itemId}/`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
+      });
+      fetchGroupedData(currentPage);
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert("❌ Failed to delete item.");
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const formattedDate = new Date(editFormData.date)
+        .toISOString()
+        .split("T")[0];
+
+      const payload = {
+        item: editFormData.item,
+        count: Number(editFormData.count.toString().trim()), // ✅ sanitize count
+        added_date: formattedDate,
+      };
+
+      await axios.put(
+        `http://localhost:8000/api/order-items/${editFormData.id}/`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access")}`,
+          },
+        }
+      );
+
+      alert("✅ Item updated successfully");
+      setShowEditItem(false);
+      fetchGroupedData(currentPage);
+    } catch (error) {
+      console.error("Edit failed:", error.response?.data || error);
+      alert("❌ Failed to update item.");
+    }
+  };
+
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -120,6 +188,7 @@ const RegularExpense = () => {
 
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg min-h-screen">
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
         <h2 className="text-lg md:text-xl font-bold text-[#124451]">
           {loading
@@ -144,15 +213,15 @@ const RegularExpense = () => {
         </div>
       </div>
 
-      {/* Header with inline dropdown filters */}
+      {/* Filters */}
       {!loading && (
-        <div className="grid grid-cols-7 gap-2 px-2 py-3 bg-gray-50 text-[13px] font-semibold text-gray-600 border-b">
+        <div className="grid grid-cols-8 gap-2 px-2 py-3 bg-gray-50 text-[13px] font-semibold text-gray-600 border-b">
           <div>
-            <div>Date</div>
+            Date
             <select
-              className="mt-1 text-xs p-1 rounded w-full"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
+              className="mt-1 text-xs p-1 rounded w-full"
             >
               <option value="">All</option>
               {uniqueDates.map((d, i) => (
@@ -163,26 +232,26 @@ const RegularExpense = () => {
             </select>
           </div>
           <div>
-            <div>Item</div>
+            Item
             <select
-              className="mt-1 text-xs p-1 rounded w-full"
               value={selectedItem}
               onChange={(e) => setSelectedItem(e.target.value)}
+              className="mt-1 text-xs p-1 rounded w-full"
             >
               <option value="">All</option>
               {uniqueItems.map((item, i) => (
-                <option key={i} value={item}>
-                  {item}
+                <option key={i} value={item.name}>
+                  {item.name}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <div>User</div>
+            User
             <select
-              className="mt-1 text-xs p-1 rounded w-full"
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
+              className="mt-1 text-xs p-1 rounded w-full"
             >
               <option value="">All</option>
               {uniqueUsers.map((user, i) => (
@@ -196,99 +265,191 @@ const RegularExpense = () => {
           <div className="flex items-end justify-center pb-1">Price/item</div>
           <div className="flex items-end justify-center pb-1">Total/item</div>
           <div className="flex items-end justify-center pb-1">Total/date</div>
+          <div className="flex items-end justify-center pb-1">Action</div>
         </div>
       )}
 
-      {/* Table Display */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#124451]"></div>
-        </div>
-      ) : Object.keys(groupedItems).length === 0 ? (
-        <div className="text-center text-gray-500 mt-12">
-          No expense records available.
-        </div>
-      ) : (
-        <>
-          {Object.keys(groupedItems).map((date, idx) => {
-            const items = groupedItems[date];
-            const totalPerRow = items.reduce(
-              (sum, item) => sum + item.count * item.price,
-              0
-            );
-            return (
-              <div
-                key={date}
-                className={`${
-                  idx % 2 === 0 ? "bg-gray-100" : "bg-white"
-                } p-4 grid grid-cols-7`}
-              >
-                <div className="flex items-center">{formatDate(date)}</div>
-                <div className="col-span-1">
-                  {items.map((item, index) => (
-                    <div key={index} className="py-1">
-                      {item.item_name}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  {items.map((item, index) => (
-                    <div key={index} className="text-center py-1">
-                      {item.user}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  {items.map((item, index) => (
-                    <div key={index} className="text-center py-1">
-                      {item.count}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  {items.map((item, index) => (
-                    <div key={index} className="text-center py-1">
-                      ₹{item.price.toFixed(2)}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  {items.map((item, index) => (
-                    <div key={index} className="text-center py-1">
-                      ₹{(item.count * item.price).toFixed(2)}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-center font-semibold">
-                  ₹ {totalPerRow.toFixed(2)}
-                </div>
+      {/* Table */}
+      {!loading &&
+        Object.keys(groupedItems).map((date, idx) => {
+          const items = groupedItems[date];
+          const totalPerRow = items.reduce(
+            (sum, item) => sum + item.count * item.price,
+            0
+          );
+          return (
+            <div
+              key={date}
+              className={`${
+                idx % 2 === 0 ? "bg-gray-100" : "bg-white"
+              } p-4 grid grid-cols-8`}
+            >
+              <div className="flex items-center">{formatDate(date)}</div>
+              <div>
+                {items.map((item, i) => (
+                  <div key={i} className="py-1">
+                    {item.item_name}
+                  </div>
+                ))}
               </div>
-            );
-          })}
+              <div>
+                {items.map((item, i) => (
+                  <div key={i} className="text-center py-1">
+                    {item.user}
+                  </div>
+                ))}
+              </div>
+              <div>
+                {items.map((item, i) => (
+                  <div key={i} className="text-center py-1">
+                    {item.count}
+                  </div>
+                ))}
+              </div>
+              <div>
+                {items.map((item, i) => (
+                  <div key={i} className="text-center py-1">
+                    ₹{item.price.toFixed(2)}
+                  </div>
+                ))}
+              </div>
+              <div>
+                {items.map((item, i) => (
+                  <div key={i} className="text-center py-1">
+                    ₹{(item.count * item.price).toFixed(2)}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-center font-semibold">
+                ₹ {totalPerRow.toFixed(2)}
+              </div>
+              <div>
+                {items.map((item, i) => (
+                  <div key={i} className="text-center py-1">
+                    {(userRole === "admin" || item.user === currentUser) && (
+                      <div className="flex gap-2 justify-center items-center">
+                        <button
+                          onClick={() => {
+                            setEditFormData({
+                              id: item.id,
+                              item: item.item_id,
+                              count: item.count,
+                              price: item.price,
+                              date: date,
+                            });
+                            setShowEditItem(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          <FontAwesomeIcon icon={faEdit} />
+                        </button>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-4 mt-8">
-              <button
-                className="px-3 py-1 bg-[#124451] text-white rounded"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                Prev
-              </button>
-              <span className="flex items-center justify-center font-semibold px-3 py-1 border rounded">
-                 {currentPage} of {totalPages}
-              </span>
-              <button
-                className="px-3 py-1 bg-[#124451] text-white rounded"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          <FontAwesomeIcon icon={faTrash} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </>
+          );
+        })}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-4 mt-8">
+          <button
+            className="px-3 py-1 bg-[#124451] text-white rounded"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+          </button>
+
+          <span className="flex items-center justify-center font-semibold px-3 py-1 border rounded">
+            {currentPage} of {totalPages}
+          </span>
+
+          <button
+            className="px-3 py-1 bg-[#124451] text-white rounded"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            <FontAwesomeIcon icon={faChevronRight} />
+          </button>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditItem && (
+        <div className="fixed inset-0 z-50 bg-[rgba(0,0,0,0.7)] flex justify-center items-center">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <button
+              onClick={() => setShowEditItem(false)}
+              className="absolute top-3 right-4 text-gray-500 hover:text-black text-2xl"
+            >
+              ×
+            </button>
+            <h3 className="text-lg font-semibold mb-4 text-center">
+              Edit Item
+            </h3>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Date</label>
+                <input
+                  type="date"
+                  value={editFormData.date}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, date: e.target.value })
+                  }
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Item</label>
+                <select
+                  value={editFormData.item}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, item: e.target.value })
+                  }
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="">Select Item</option>
+                  {uniqueItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Count</label>
+                <input
+                  type="number"
+                  value={editFormData.count}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, count: e.target.value })
+                  }
+                  className="w-full p-2 border rounded"
+                  placeholder="Count"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="px-4 py-2 bg-[#124451] text-white rounded w-full"
+              >
+                Update
+              </button>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Add Item Modal */}

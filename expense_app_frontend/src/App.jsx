@@ -70,13 +70,26 @@ function App() {
         <Route path="*" element={<Navigate to="/login" />} />
       ) : (
         <Route path="/" element={<Layout />}>
-          <Route index element={userRole === "Admin" ? <AdminDashboard /> : <Home />} />
+          <Route
+            index
+            element={
+              userRole?.toLowerCase() === "admin" ? (
+                <AdminDashboard />
+              ) : (
+                <Home />
+              )
+            }
+          />
+          <Route path="admin-dashboard" element={<AdminDashboard />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="regular-expense" element={<RegularExpense />} />
           <Route path="other-expense" element={<OtherExpense />} />
           <Route path="update-item" element={<UpdateItem />} />
           <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="admin/regular-expense" element={<AdminRegularExpense />} />
+          <Route
+            path="admin/regular-expense"
+            element={<AdminRegularExpense />}
+          />
           <Route path="admin/other-expense" element={<AdminOtherExpense />} />
           <Route path="admin/expense-history" element={<ExpenseHistory />} />
         </Route>
