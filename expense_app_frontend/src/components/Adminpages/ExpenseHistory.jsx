@@ -28,87 +28,122 @@ const ExpenseHistory = () => {
 
   const formatDate = (dateString) => {
     const d = new Date(dateString);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
   };
 
-  const fetchData = useCallback(async (appliedFilters = filters) => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("access");
-      if (!token) {
-        alert("Please log in to view expense history.");
-        return;
-      }
+  const fetchData = useCallback(
+    async (appliedFilters = filters) => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem("access");
+        if (!token) {
+          alert("Please log in to view expense history.");
+          return;
+        }
 
-      // Regular expenses (no pagination)
-      const regularData = await getGroupedOrders(appliedFilters);
-      const regularExpenses = Object.keys(regularData.results).flatMap((date) =>
-        regularData.results[date].map((item) => ({
-          id: `${date}-${item.item_name}`,
-          date,
-          description: sanitizeText(item.item_name),
-          expense_category: "Regular",
-          expense_type: item.type || "Unknown",
-          amount: item.count * item.price,
-          is_verified: item.is_verified || false,
-        }))
-      );
-
-      // Other expenses (no pagination)
-      const otherResponse = await axios.get("http://localhost:8000/api/expenses/", {
-        headers: { Authorization: `Bearer ${token}` },
-        params: {
-          type: appliedFilters.type,
-          is_verified: appliedFilters.isVerified,
-          start_date: appliedFilters.startDate,
-          end_date: appliedFilters.endDate,
-        },
-      });
-
-      const otherExpenses = (otherResponse.data.results || otherResponse.data).map((exp) => ({
-        id: exp.id,
-        date: exp.date,
-        description: sanitizeText(exp.description),
-        expense_category: "Other",
-        expense_type: exp.expense_type,
-        amount: parseFloat(exp.amount),
-        is_verified: exp.is_verified,
-      }));
-
-      let combined = [...regularExpenses, ...otherExpenses].sort(
-        (a, b) => new Date(b.date) - new Date(a.date)
-      );
-
-      if (appliedFilters.expenseCategory) {
-        combined = combined.filter((exp) => exp.expense_category === appliedFilters.expenseCategory);
-      }
-      if (appliedFilters.type) {
-        combined = combined.filter((exp) => exp.expense_type === appliedFilters.type);
-      }
-      if (appliedFilters.isVerified !== "") {
-        combined = combined.filter((exp) => exp.is_verified === (appliedFilters.isVerified === "true"));
-      }
-      if (appliedFilters.startDate && appliedFilters.endDate) {
-        combined = combined.filter((exp) => {
-          const date = dayjs(exp.date);
-          return (
-            date.isAfter(dayjs(appliedFilters.startDate).subtract(1, "day")) &&
-            date.isBefore(dayjs(appliedFilters.endDate).add(1, "day"))
+        // Regular expenses (aggregate by date)
+        const regularData = await getGroupedOrders(1, 100, appliedFilters); // Fetch all pages for simplicity
+        const regularExpenses = Object.keys(regularData.results).map((date) => {
+          const items = regularData.results[date];
+          const description = items
+            .map((item) => sanitizeText(item.item_name))
+            .join(", ");
+          const amount = items.reduce(
+            (sum, item) => sum + item.count * item.price,
+            0
           );
-        });
-      }
+          const expense_type = items[0]?.type || "Food"; // Use first item's type or default to "Food"
+          const is_verified = items[0]?.is_verified || false; // Use first item's is_verified or default to false
 
-      setFilteredExpenses(combined);
-      setTotalAmount(combined.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0));
-      setTotalPages(Math.ceil(combined.length / PAGE_SIZE));
-      setCurrentPage(1);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      alert("Failed to fetch expense history.");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
+          return {
+            id: `regular-${date}`,
+            date,
+            description,
+            expense_category: "Regular",
+            expense_type,
+            amount,
+            is_verified,
+          };
+        });
+
+        // Other expenses (no pagination)
+        const otherResponse = await axios.get(
+          "http://localhost:8000/api/expenses/",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            params: {
+              type: appliedFilters.type,
+              is_verified: appliedFilters.isVerified,
+              start_date: appliedFilters.startDate,
+              end_date: appliedFilters.endDate,
+            },
+          }
+        );
+
+        const otherExpenses = (
+          otherResponse.data.results || otherResponse.data
+        ).map((exp) => ({
+          id: exp.id,
+          date: exp.date,
+          description: sanitizeText(exp.description),
+          expense_category: "Other",
+          expense_type: exp.expense_type,
+          amount: parseFloat(exp.amount),
+          is_verified: exp.is_verified,
+        }));
+
+        let combined = [...regularExpenses, ...otherExpenses].sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        );
+
+        // Apply client-side filters
+        if (appliedFilters.expenseCategory) {
+          combined = combined.filter(
+            (exp) => exp.expense_category === appliedFilters.expenseCategory
+          );
+        }
+        if (appliedFilters.type) {
+          combined = combined.filter(
+            (exp) => exp.expense_type === appliedFilters.type
+          );
+        }
+        if (appliedFilters.isVerified !== "") {
+          combined = combined.filter(
+            (exp) => exp.is_verified === (appliedFilters.isVerified === "true")
+          );
+        }
+        if (appliedFilters.startDate && appliedFilters.endDate) {
+          combined = combined.filter((exp) => {
+            const date = dayjs(exp.date);
+            return (
+              date.isAfter(
+                dayjs(appliedFilters.startDate).subtract(1, "day")
+              ) && date.isBefore(dayjs(appliedFilters.endDate).add(1, "day"))
+            );
+          });
+        }
+
+        setFilteredExpenses(combined);
+        setTotalAmount(
+          combined.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0)
+        );
+        setTotalPages(Math.ceil(combined.length / PAGE_SIZE));
+        setCurrentPage(1);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        alert(
+          error.response?.data?.error ||
+            "Failed to fetch expense history. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters]
+  );
 
   useEffect(() => {
     fetchData();
@@ -140,16 +175,35 @@ const ExpenseHistory = () => {
 
     const worksheet = XLSX.utils.aoa_to_sheet(data);
     worksheet["!cols"] = data[0].map((_, colIndex) => ({
-      wch: Math.max(...data.map((row) => (row[colIndex] != null ? row[colIndex].toString().length + 2 : 10))),
+      wch: Math.max(
+        ...data.map((row) =>
+          row[colIndex] != null ? row[colIndex].toString().length + 2 : 10
+        )
+      ),
     }));
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Expense History");
 
-    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-    saveAs(new Blob([excelBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }), `expense_history_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    saveAs(
+      new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+      `expense_history_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleFilterSubmit = (newFilters) => {
+    setFilters(newFilters);
+    fetchData(newFilters);
+    setIsFilterOpen(false);
   };
 
   const FilterModal = ({ onClose, onSubmit, filters }) => {
@@ -157,7 +211,9 @@ const ExpenseHistory = () => {
     const [isVerified, setIsVerified] = useState(filters.isVerified || "");
     const [startDate, setStartDate] = useState(filters.startDate || "");
     const [endDate, setEndDate] = useState(filters.endDate || "");
-    const [expenseCategory, setExpenseCategory] = useState(filters.expenseCategory || "");
+    const [expenseCategory, setExpenseCategory] = useState(
+      filters.expenseCategory || ""
+    );
 
     const handleSubmit = () => {
       onSubmit({ type, isVerified, startDate, endDate, expenseCategory });
@@ -166,43 +222,71 @@ const ExpenseHistory = () => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
         <div className="bg-white p-6 rounded-lg w-full max-w-md">
-          <h2 className="text-lg font-bold text-[#124451] mb-4">Filter Expenses</h2>
+          <h2 className="text-lg font-bold text-[#124451] mb-4">
+            Filter Expenses
+          </h2>
           <div className="space-y-3">
-            <select value={expenseCategory} onChange={(e) => setExpenseCategory(e.target.value)} className="w-full p-2 border rounded">
+            <select
+              value={expenseCategory}
+              onChange={(e) => setExpenseCategory(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
               <option value="">All Categories</option>
               <option value="Regular">Regular</option>
               <option value="Other">Other</option>
             </select>
-            <select value={type} onChange={(e) => setType(e.target.value)} className="w-full p-2 border rounded">
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
               <option value="">All Types</option>
               <option value="Product">Product</option>
               <option value="Food">Food</option>
               <option value="Service">Service</option>
             </select>
-            <select value={isVerified} onChange={(e) => setIsVerified(e.target.value)} className="w-full p-2 border rounded">
+            <select
+              value={isVerified}
+              onChange={(e) => setIsVerified(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
               <option value="">All Status</option>
               <option value="true">Verified</option>
               <option value="false">Not Verified</option>
             </select>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full p-2 border rounded" />
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full p-2 border rounded" />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full p-2 border rounded"
+            />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full p-2 border rounded"
+            />
           </div>
           <div className="mt-4 flex justify-end gap-3">
-            <button className="px-4 py-2 bg-gray-300 rounded" onClick={onClose}>Cancel</button>
-            <button className="px-4 py-2 bg-[#124451] text-white rounded" onClick={handleSubmit}>Apply</button>
+            <button className="px-4 py-2 bg-gray-300 rounded" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 bg-[#124451] text-white rounded"
+              onClick={handleSubmit}
+            >
+              Apply
+            </button>
           </div>
         </div>
       </div>
     );
   };
 
-  const handleFilterSubmit = (newFilters) => {
-    setFilters(newFilters);
-    fetchData(newFilters);
-    setIsFilterOpen(false);
-  };
-
-  const currentExpenses = filteredExpenses.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const currentExpenses = filteredExpenses.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg min-h-screen">
@@ -211,11 +295,17 @@ const ExpenseHistory = () => {
           {loading ? "Loading..." : `Total Amount: ₹ ${totalAmount.toFixed(2)}`}
         </h2>
         <div className="flex gap-2">
-          <button className="bg-[#124451] text-white px-3 py-1 rounded-full flex items-center gap-1" onClick={() => setIsFilterOpen(true)}>
+          <button
+            className="bg-[#124451] text-white px-3 py-1 rounded-full flex items-center gap-1"
+            onClick={() => setIsFilterOpen(true)}
+          >
             <FontAwesomeIcon icon={faFilter} />
             <span>Filter</span>
           </button>
-          <button className="bg-[#124451] text-white px-3 py-1 rounded-full flex items-center gap-1" onClick={downloadExcel}>
+          <button
+            className="bg-[#124451] text-white px-3 py-1 rounded-full flex items-center gap-1"
+            onClick={downloadExcel}
+          >
             <FontAwesomeIcon icon={faFileExcel} className="text-green-300" />
             <span>Download Excel</span>
           </button>
@@ -227,7 +317,9 @@ const ExpenseHistory = () => {
           <div className="animate-spin h-12 w-12 border-4 border-t-[#124451] border-gray-200 rounded-full" />
         </div>
       ) : currentExpenses.length === 0 ? (
-        <div className="text-center text-gray-500 mt-12">No expense history found.</div>
+        <div className="text-center text-gray-500 mt-12">
+          No expense history found.
+        </div>
       ) : (
         <>
           {/* Table */}
@@ -246,30 +338,95 @@ const ExpenseHistory = () => {
               </thead>
               <tbody>
                 {currentExpenses.map((exp, i) => (
-                  <tr key={exp.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                    <td className="p-2">{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
+                  <tr
+                    key={exp.id}
+                    className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  >
+                    <td className="p-2">
+                      {(currentPage - 1) * PAGE_SIZE + i + 1}
+                    </td>
                     <td className="p-2">{formatDate(exp.date)}</td>
                     <td className="p-2">{exp.description}</td>
                     <td className="p-2">{exp.expense_category}</td>
                     <td className="p-2">{exp.expense_type}</td>
                     <td className="p-2">₹{exp.amount.toFixed(2)}</td>
-                    <td className="p-2">{exp.is_verified ? "Yes" : "-"}</td>
+                    <td className="p-2">
+                      {exp.expense_category === "Regular" ? (
+                        <span className="text-gray-500">–</span>
+                      ) : exp.is_verified ? (
+                        <span className="text-green-600 font-semibold">
+                          Yes
+                        </span>
+                      ) : (
+                        <span className="text-red-600 font-semibold">No</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
+          {/* Mobile View */}
+          <div className="md:hidden space-y-4">
+            {currentExpenses.map((exp, i) => (
+              <div
+                key={exp.id}
+                className={`p-4 rounded-lg ${
+                  i % 2 === 0 ? "bg-white" : "bg-gray-50"
+                }`}
+              >
+                <div className="text-sm text-gray-600">
+                  <div>
+                    <strong>S.No:</strong>{" "}
+                    {(currentPage - 1) * PAGE_SIZE + i + 1}
+                  </div>
+                  <div>
+                    <strong>Date:</strong> {formatDate(exp.date)}
+                  </div>
+                  <div>
+                    <strong>Description:</strong> {exp.description}
+                  </div>
+                  <div>
+                    <strong>Category:</strong> {exp.expense_category}
+                  </div>
+                  <div>
+                    <strong>Type:</strong> {exp.expense_type}
+                  </div>
+                  <div>
+                    <strong>Amount:</strong> ₹{exp.amount.toFixed(2)}
+                  </div>
+                  <div>
+                    <strong>Verified:</strong>{" "}
+                    {exp.expense_category === "Regular"
+                      ? "–"
+                      : exp.is_verified
+                      ? "Yes"
+                      : "No"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex justify-center mt-6 gap-4">
-              <button className="px-3 py-1 bg-[#124451] text-white rounded disabled:opacity-50"
-                onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+              <button
+                className="px-3 py-1 bg-[#124451] text-white rounded disabled:opacity-50"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
                 Prev
               </button>
-              <span className="font-semibold">Page {currentPage} of {totalPages}</span>
-              <button className="px-3 py-1 bg-[#124451] text-white rounded disabled:opacity-50"
-                onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+              <span className="font-semibold">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className="px-3 py-1 bg-[#124451] text-white rounded disabled:opacity-50"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
                 Next
               </button>
             </div>
@@ -278,7 +435,11 @@ const ExpenseHistory = () => {
       )}
 
       {isFilterOpen && (
-        <FilterModal onClose={() => setIsFilterOpen(false)} onSubmit={handleFilterSubmit} filters={filters} />
+        <FilterModal
+          onClose={() => setIsFilterOpen(false)}
+          onSubmit={handleFilterSubmit}
+          filters={filters}
+        />
       )}
     </div>
   );

@@ -1,19 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import { loginUser, setAuthToken } from '../api_service/api';
+import React, { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom"; // ✅ Link included here
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { loginUser, setAuthToken } from "../api_service/api";
 
 function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('access');
+    const token = localStorage.getItem("access");
     if (token) {
-      navigate('/');
+      navigate("/");
     }
   }, [navigate]);
 
@@ -24,36 +24,38 @@ function Login() {
     try {
       const data = await loginUser(email, password);
 
-      // ✅ Save tokens and user details
-      localStorage.setItem('access', data.access);
-      localStorage.setItem('refresh', data.refresh);
+      localStorage.setItem("access", data.access);
+      localStorage.setItem("refresh", data.refresh);
       setAuthToken(data.access);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem("user", JSON.stringify(data.user));
 
-      // ✅ Save normalized role and username
-      const userRole = (data?.user?.role?.role_name || 'user').toLowerCase();
-      localStorage.setItem('role', userRole);
-      localStorage.setItem('username', data.user.username);
+      const userRole = (data?.user?.role?.role_name || "user").toLowerCase();
+      localStorage.setItem("role", userRole);
+      localStorage.setItem("username", data.user.username);
 
-      console.log('Logged-in user role:', userRole);
-      console.log('Logged-in username:', data.user.username);
-
-      // ✅ Navigate based on role
-      if (userRole === 'admin') {
-        navigate('/admin-dashboard');
+      // ✅ Redirect based on role
+      if (userRole === "admin") {
+        navigate("/admin-dashboard");
       } else {
-        navigate('/user-dashboard');
+        navigate("/"); // 👈 redirect to homepage instead of "/user-dashboard"
       }
     } catch (err) {
       console.error(err);
-      setError('Invalid credentials. Please try again.');
+      const message =
+  err.response?.data?.detail ||
+  err.response?.data?.non_field_errors?.[0] ||
+  "Invalid credentials. Please try again.";
+setError(message);
+
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center text-[#2B3B6C]">Login</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center text-[#2B3B6C]">
+          Login
+        </h2>
         {error && <div className="text-red-500 mb-4 text-center">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -78,7 +80,7 @@ function Login() {
               <Lock className="h-5 w-5 text-gray-400" />
             </div>
             <input
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
@@ -101,6 +103,12 @@ function Login() {
           >
             Login
           </button>
+          <p className="text-sm text-center mt-4">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-blue-600 hover:underline">
+              Register
+            </Link>
+          </p>
         </form>
       </div>
     </div>

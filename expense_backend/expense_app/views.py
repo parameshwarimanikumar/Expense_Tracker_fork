@@ -502,7 +502,7 @@ def order_list_create(request):
             orders = Order.objects.all()
         else:
             orders = Order.objects.filter(created_user=request.user)
-        
+
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data)
 
@@ -532,17 +532,25 @@ def order_list_create(request):
                     else:
                         return Response({'error': 'Missing added_date for one of the items.'}, status=400)
 
+                    # ✅ Fetch item and get price
+                    try:
+                        item = Item.objects.get(id=item_id)
+                        price = item.item_price
+                    except Item.DoesNotExist:
+                        return Response({'error': f'Item with id {item_id} does not exist.'}, status=400)
+
                     # Split count into morning and evening
                     morning_count = count // 2
                     evening_count = count - morning_count
 
-                    # Create OrderItem
+                    # ✅ Create OrderItem with price
                     OrderItem.objects.create(
                         order=order,
-                        item_id=item_id,
+                        item=item,
                         morning_count=morning_count,
                         evening_count=evening_count,
-                        added_date=added_date
+                        added_date=added_date,
+                        price=price
                     )
 
                 # Recalculate total price after adding all items
@@ -553,6 +561,7 @@ def order_list_create(request):
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def order_detail(request, pk):

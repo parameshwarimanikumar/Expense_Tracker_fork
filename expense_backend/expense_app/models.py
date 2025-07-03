@@ -89,6 +89,7 @@ class OrderItem(models.Model):
     morning_count = models.IntegerField(default=0)
     evening_count = models.IntegerField(default=0)
     added_date = models.DateTimeField(default=timezone.now)
+    price = models.DecimalField(max_digits=10, decimal_places=2)  # ✅ Add this
 
     @property
     def count(self):

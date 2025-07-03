@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import ProfilePage from "./components/Profile/ProfilePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import UpdateItem from "./components/UpdateItem/UpdateItem";
+import Register from "./pages/Register"; // adjust path if needed
 import AdminOtherExpense from "./components/Adminpages/OtherExpense";
 import AdminRegularExpense from "./components/Adminpages/RegularExpense";
 import ExpenseHistory from "./components/Adminpages/ExpenseHistory";
@@ -65,6 +66,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+       <Route path="/register" element={<Register />} />
 
       {!isLoggedIn ? (
         <Route path="*" element={<Navigate to="/login" />} />

@@ -76,7 +76,8 @@ const UpdateItem = () => {
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = showHistory || showItemHistory ? "hidden" : "";
+    document.body.style.overflow =
+      showHistory || showItemHistory ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -129,7 +130,9 @@ const UpdateItem = () => {
           allHistory.push({ ...entry, item_name: item.item_name })
         );
       }
-      setHistory(allHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setHistory(
+        allHistory.sort((a, b) => new Date(b.date) - new Date(a.date))
+      );
       setShowHistory(true);
     } catch {
       setError("Failed to fetch price history");
@@ -204,7 +207,9 @@ const UpdateItem = () => {
         setItems([...items, tempItem]);
         const res = await addItem(payload);
         setItems((prev) =>
-          prev.map((item) => (item.id === tempItem.id ? { ...item, id: res.id } : item))
+          prev.map((item) =>
+            item.id === tempItem.id ? { ...item, id: res.id } : item
+          )
         );
       }
       handleCancel();
@@ -228,7 +233,8 @@ const UpdateItem = () => {
             <h3 className="text-lg font-bold">Item List</h3>
             <button
               onClick={fetchHistory}
-              className="bg-teal-700 text-white px-4 py-1 rounded shadow flex items-center gap-1"
+              style={{ backgroundColor: "#124451" }}
+              className="text-white px-4 py-1 rounded shadow flex items-center gap-1"
             >
               📜 All History
             </button>
@@ -256,18 +262,28 @@ const UpdateItem = () => {
                       <td className="p-2">{index + 1}</td>
                       <td className="p-2">{item.item_name}</td>
                       <td className="p-2">
-                        {categories.find((cat) => cat.id === item.category)?.category_name || "-"}
+                        {categories.find((cat) => cat.id === item.category)
+                          ?.category_name || "-"}
                       </td>
                       <td className="p-2">₹ {item.item_price}</td>
                       <td className="p-2 space-x-4">
                         <button onClick={() => handleEdit(item)}>
-                          <FontAwesomeIcon icon={faPenToSquare} className="text-gray-600 hover:text-teal-700" />
+                          <FontAwesomeIcon
+                            icon={faPenToSquare}
+                            className="text-gray-600 hover:text-teal-700"
+                          />
                         </button>
                         <button onClick={() => handleDelete(item.id)}>
-                          <FontAwesomeIcon icon={faTrash} className="text-gray-600 hover:text-red-500" />
+                          <FontAwesomeIcon
+                            icon={faTrash}
+                            className="text-gray-600 hover:text-red-500"
+                          />
                         </button>
                         <button onClick={() => fetchItemHistory(item)}>
-                          <FontAwesomeIcon icon={faHistory} className="text-gray-600 hover:text-blue-500" />
+                          <FontAwesomeIcon
+                            icon={faHistory}
+                            className="text-gray-600 hover:text-blue-500"
+                          />
                         </button>
                       </td>
                     </tr>
@@ -320,7 +336,8 @@ const UpdateItem = () => {
                   </button>
                   <button
                     type="submit"
-                    className="bg-teal-700 text-white px-4 py-1 rounded shadow"
+                    style={{ backgroundColor: "#124451" }}
+                    className="text-white px-4 py-1 rounded shadow"
                   >
                     {formData.id ? "Update" : "Add"}
                   </button>
@@ -348,7 +365,8 @@ const UpdateItem = () => {
                 )}
                 <button
                   onClick={() => setShowHistory(false)}
-                  className="mt-4 bg-teal-700 text-white px-4 py-1 rounded shadow"
+                  style={{ backgroundColor: "#124451" }}
+                  className="mt-4 text-white px-4 py-1 rounded shadow"
                 >
                   Close
                 </button>
@@ -367,7 +385,8 @@ const UpdateItem = () => {
                   <ul className="space-y-2">
                     {itemHistory.map((entry, idx) => (
                       <li key={idx} className="text-gray-700">
-                        ₹ {entry.price} on {dayjs(entry.date).format("DD/MM/YYYY")}
+                        ₹ {entry.price} on{" "}
+                        {dayjs(entry.date).format("DD/MM/YYYY")}
                       </li>
                     ))}
                   </ul>
