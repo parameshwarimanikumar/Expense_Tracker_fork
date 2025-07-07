@@ -5,17 +5,17 @@ import AdminDashboard from "./pages/AdminDashboard";
 import RegularExpense from "./pages/RegularExpense";
 import OtherExpense from "./pages/OtherExpense";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import ProfilePage from "./components/Profile/ProfilePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import UpdateItem from "./components/UpdateItem/UpdateItem";
-import Register from "./pages/Register"; // adjust path if needed
 import AdminOtherExpense from "./components/Adminpages/OtherExpense";
 import AdminRegularExpense from "./components/Adminpages/RegularExpense";
 import ExpenseHistory from "./components/Adminpages/ExpenseHistory";
-
+import History from "./components/Adminpages/history"; // ✅ important
 import { setAuthToken } from "./api_service/api";
 import { useEffect, useState } from "react";
-import { jwtDecode } from "jwt-decode"; // ✅ Correct import
+import { jwtDecode } from "jwt-decode";
 
 function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -37,18 +37,18 @@ function App() {
 
     if (token && user) {
       try {
-        const decoded = jwtDecode(token); // ✅ correct usage
+        const decoded = jwtDecode(token);
         const now = Date.now() / 1000;
 
         if (decoded.exp < now) {
-          logout(); // ❌ expired
+          logout();
         } else {
           setAuthToken(token);
           setUserRole(user?.role?.role_name || "User");
           setIsLoggedIn(true);
         }
       } catch {
-        logout(); // ❌ malformed token
+        logout();
       }
     }
 
@@ -66,7 +66,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-       <Route path="/register" element={<Register />} />
+      <Route path="/register" element={<Register />} />
 
       {!isLoggedIn ? (
         <Route path="*" element={<Navigate to="/login" />} />
@@ -74,26 +74,17 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route
             index
-            element={
-              userRole?.toLowerCase() === "admin" ? (
-                <AdminDashboard />
-              ) : (
-                <Home />
-              )
-            }
+            element={userRole?.toLowerCase() === "admin" ? <AdminDashboard /> : <Home />}
           />
-          <Route path="admin-dashboard" element={<AdminDashboard />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="regular-expense" element={<RegularExpense />} />
           <Route path="other-expense" element={<OtherExpense />} />
           <Route path="update-item" element={<UpdateItem />} />
           <Route path="notifications" element={<NotificationsPage />} />
-          <Route
-            path="admin/regular-expense"
-            element={<AdminRegularExpense />}
-          />
+          <Route path="admin/regular-expense" element={<AdminRegularExpense />} />
           <Route path="admin/other-expense" element={<AdminOtherExpense />} />
           <Route path="admin/expense-history" element={<ExpenseHistory />} />
+          <Route path="admin/history" element={<History />} />
         </Route>
       )}
     </Routes>

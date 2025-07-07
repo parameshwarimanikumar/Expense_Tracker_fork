@@ -41,7 +41,8 @@ const RegularExpense = () => {
   });
 
   const currentUser = localStorage.getItem("username");
-  const userRole = (localStorage.getItem("role") || "").toLowerCase();
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = (user.role?.role_name || "").toLowerCase();
 
   const fetchGroupedData = useCallback(
     async (page) => {
@@ -131,6 +132,11 @@ const RegularExpense = () => {
       `expenses_${new Date().toISOString().slice(0, 10)}.xlsx`
     );
   };
+  const resetFilters = () => {
+    setSelectedUser("");
+    setSelectedItem("");
+    setSelectedDate("");
+  };
 
   const handleDelete = async (itemId) => {
     const confirm = window.confirm(
@@ -195,14 +201,24 @@ const RegularExpense = () => {
             ? "Loading..."
             : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
         </h2>
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex gap-2 w-full md:w-auto flex-wrap">
+          {userRole === "admin" && (
+            <button
+              className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-1"
+              onClick={() => setShowAddItem(true)}
+            >
+              <FontAwesomeIcon icon={faPlus} />
+              <span className="hidden sm:inline">Add Item</span>
+            </button>
+          )}
+
           <button
-            className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-1"
-            onClick={() => setShowAddItem(true)}
+            className="bg-gray-300 text-black px-4 py-1 rounded-full flex items-center gap-1 hover:bg-gray-400"
+            onClick={resetFilters}
           >
-            <FontAwesomeIcon icon={faPlus} />
-            <span className="hidden sm:inline">Add Item</span>
+            Reset Filters
           </button>
+
           <button
             className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-1"
             onClick={downloadExcel}

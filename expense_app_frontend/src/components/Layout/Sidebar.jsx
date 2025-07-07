@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import brillersys from "../../assets/brillersys.png";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -15,54 +15,52 @@ import { logoutUser } from "../../api_service/api";
 const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Detect role dynamically on mount
+  // Detect role dynamically
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
     setIsAdmin(storedUser?.role?.role_name === "Admin");
   }, []);
 
-  // Define nav items
-  const navItems = [
-    { path: "/", name: "Home", icon: faHouse },
-    {
-      path: isAdmin ? "/admin/regular-expense" : "/regular-expense",
-      name: "Regular Expense",
-      icon: faIndianRupeeSign,
-    },
-    {
-      path: isAdmin ? "/admin/other-expense" : "/other-expense",
-      name: "Other Expense",
-      icon: faWallet,
-    },
-  ];
-
-  // Add admin-only items
-  if (isAdmin) {
-    navItems.push(
+  // ✅ Dynamically create navItems based on role after isAdmin is known
+  const navItems = useMemo(() => {
+    const base = [
+      { path: "/", name: "Home", icon: faHouse },
       {
-        path: "/update-item",
-        name: "Update Item",
-        icon: faPenToSquare,
+        path: isAdmin ? "/admin/regular-expense" : "/regular-expense",
+        name: "Regular Expense",
+        icon: faIndianRupeeSign,
       },
       {
-        path: "/admin/expense-history",
-        name: "Expense History",
-        icon: faWallet, // Customize this icon if needed
-      }
-    );
-  }
+        path: isAdmin ? "/admin/other-expense" : "/other-expense",
+        name: "Other Expense",
+        icon: faWallet,
+      },
+    ];
+
+    if (isAdmin) {
+      base.push(
+        { path: "/update-item", name: "Update Item", icon: faPenToSquare },
+        { path: "/admin/history", name: "Expense History", icon: faWallet },
+        {
+          path: "/admin/expense-history",
+          name: "All Expense History",
+          icon: faWallet,
+        }
+      );
+    }
+
+    return base;
+  }, [isAdmin]);
 
   // Handle logout
   const handleLogout = async () => {
     try {
-      await logoutUser(); // optional API call
+      await logoutUser();
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
-      localStorage.removeItem("user");
-      window.location.href = "/login"; // Redirect to login
+      localStorage.clear();
+      window.location.href = "/login";
     }
   };
 
@@ -110,7 +108,7 @@ const Sidebar = ({ isOpen, toggleSidebar, activeTab, setActiveTab }) => {
           </NavLink>
         ))}
 
-        {/* Logout Button */}
+        {/* Logout */}
         <div className="absolute bottom-4 w-full px-4">
           <button
             className="flex items-center p-3 text-gray-500 font-medium"

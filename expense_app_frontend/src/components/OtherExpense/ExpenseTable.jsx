@@ -10,6 +10,10 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"; // ✅ This line
+import { faFileExcel } from "@fortawesome/free-solid-svg-icons";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import dayjs from "dayjs";
 import axios from "axios";
 
@@ -20,7 +24,9 @@ const ExpenseTable = () => {
     type: "",
     isVerified: "",
     isRefunded: "",
+    date: "",
   });
+
   const [showFilter, setShowFilter] = useState(false);
   const [showExpense, setShowExpense] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -36,6 +42,7 @@ const ExpenseTable = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [viewingMyData, setViewingMyData] = useState(false);
+  const [uniqueDates, setUniqueDates] = useState([]);
 
   const itemsPerPage = 10;
 
@@ -50,6 +57,13 @@ const ExpenseTable = () => {
         const response = await axios.get(url, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        const dates = [
+          ...new Set(
+            response.data.map((exp) => dayjs(exp.date).format("YYYY-MM-DD"))
+          ),
+        ];
+        setUniqueDates(dates.sort().reverse());
+
         setExpenses(response.data);
       } catch (error) {
         console.error("Error fetching expenses:", error);
@@ -72,14 +86,10 @@ const ExpenseTable = () => {
       temp = temp.filter(
         (e) => e.is_refunded === (filters.isRefunded === "true")
       );
-    if (filters.startDate && filters.endDate)
-      temp = temp.filter((e) => {
-        const d = dayjs(e.date);
-        return (
-          d.isAfter(dayjs(filters.startDate).subtract(1, "day")) &&
-          d.isBefore(dayjs(filters.endDate).add(1, "day"))
-        );
-      });
+    if (filters.date)
+      temp = temp.filter(
+        (e) => dayjs(e.date).format("YYYY-MM-DD") === filters.date
+      );
 
     setFilteredExpenses(temp);
     setCurrentPage(1);
@@ -95,9 +105,49 @@ const ExpenseTable = () => {
       type: "",
       isVerified: "",
       isRefunded: "",
-      startDate: "",
-      endDate: "",
+      date: "",
     });
+
+  const downloadExcel = () => {
+  const wb = XLSX.utils.book_new();
+  const rows = [
+    ["S.No", "Date", "Description", "Type", "Amount", "Verified", "Refunded", "Bill URL"],
+  ];
+
+  filteredExpenses.forEach((exp, index) => {
+    rows.push([
+      index + 1,
+      dayjs(exp.date).format("DD/MM/YYYY"),
+      exp.description,
+      exp.expense_type,
+      `₹${parseFloat(exp.amount).toFixed(2)}`,
+      exp.is_verified ? "Yes" : "No",
+      exp.is_refunded ? "Yes" : "No",
+      exp.bill_url || "N/A",
+    ]);
+  });
+
+  rows.push([]);
+  rows.push([
+    "",
+    "",
+    "",
+    "Grand Total",
+    `₹${calculateTotal()}`,
+    "",
+    "",
+    "",
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, "Expenses");
+  const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+
+  saveAs(
+    new Blob([buffer]),
+    `expenses_${new Date().toISOString().slice(0, 10)}.xlsx`
+  );
+};
 
   const showexpense = () => {
     setShowExpense(!showExpense);
@@ -213,10 +263,17 @@ const ExpenseTable = () => {
             Reset Filters
           </button>
           <button
+            className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-1"
+            onClick={downloadExcel}
+          >
+            <FontAwesomeIcon icon={faFileExcel} className="text-green-600" />
+            <span className="hidden sm:inline">Download Excel</span>
+          </button>
+          <button
             onClick={showexpense}
             className="bg-[#124451] text-white px-4 py-1 rounded-full"
           >
-            Add Expense
+            +Add Expense
           </button>
         </div>
       </div>
@@ -237,7 +294,25 @@ const ExpenseTable = () => {
             <thead className="border-b border-gray-100 text-gray-500 text-sm font-medium">
               <tr>
                 <th className="p-3 text-left">S.No</th>
-                <th className="p-3 text-left">Date</th>
+                <th className="p-3 text-left">
+                  <div className="flex flex-col">
+                    <span>Date</span>
+                    <select
+                      name="date"
+                      value={filters.date}
+                      onChange={handleFilterChange}
+                      className="mt-1 text-black border border-gray-300 rounded px-1 py-[2px]"
+                    >
+                      <option value="">All</option>
+                      {uniqueDates.map((d, i) => (
+                        <option key={i} value={d}>
+                          {dayjs(d).format("DD/MM/YYYY")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </th>
+
                 <th className="p-3 text-left">Description</th>
                 <th className="p-3 text-left">
                   <div className="flex flex-col">

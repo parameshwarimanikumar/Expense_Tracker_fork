@@ -34,6 +34,14 @@ const DataTable = () => {
     user: "",
   });
 
+  const resetFilters = () =>
+    setFilters({
+      type: "",
+      isVerified: "",
+      isRefunded: "",
+      date: "",
+    });
+
   const fetchData = useCallback(
     async (page = 1) => {
       setLoading(true);
@@ -176,6 +184,12 @@ const DataTable = () => {
             : `Total Price: ₹ ${Number(totalPrice || 0).toFixed(2)}`}
         </h2>
         <div className="flex gap-2 w-full md:w-auto">
+          <button
+            onClick={resetFilters}
+            className="bg-gray-300 text-black px-4 py-1 rounded-full hover:bg-gray-400"
+          >
+            Reset Filters
+          </button>
           <button
             className="bg-[#124451] text-white px-4 py-1 rounded-full flex items-center gap-1"
             onClick={downloadExcel}
