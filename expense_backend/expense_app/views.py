@@ -793,6 +793,12 @@ def send_realtime_notification(user, message):
         }
     )
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def clear_all_notifications(request):
+    Notification.objects.filter(recipient=request.user).delete()
+    return Response({"detail": "All notifications cleared"}, status=204)
+
 
 
 # Daily total

@@ -34,11 +34,23 @@ const Navbar = ({ toggleSidebar, title }) => {
     }
   };
 
+  const handleClearAll = async () => {
+    try {
+      await axiosInstance.delete("/notifications/clear-all/");
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to clear notifications", error);
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       const res = await axiosInstance.get("/notifications/");
       setUnreadCount(res.data.unread_count || 0);
-      setNotifications(Array.isArray(res.data.notifications) ? res.data.notifications : []);
+      setNotifications(
+        Array.isArray(res.data.notifications) ? res.data.notifications : []
+      );
     } catch (error) {
       console.error("Error fetching notifications:", error);
     }
@@ -86,7 +98,9 @@ const Navbar = ({ toggleSidebar, title }) => {
     <>
       <div className="fixed top-0 right-0 left-0 md:left-64 bg-white md:bg-[rgba(244,247,254,1)] z-40 shadow">
         <div className="px-4 py-3 flex justify-between items-center">
-          <h1 className="text-2xl text-[#124451] hidden font-semibold md:block">{title}</h1>
+          <h1 className="text-2xl text-[#124451] hidden font-semibold md:block">
+            {title}
+          </h1>
 
           <div className="flex items-center gap-3 md:hidden">
             <button onClick={toggleSidebar}>
@@ -94,7 +108,10 @@ const Navbar = ({ toggleSidebar, title }) => {
             </button>
           </div>
 
-          <div ref={dropdownRef} className="relative flex items-center gap-6 bg-white rounded-full px-6 py-2">
+          <div
+            ref={dropdownRef}
+            className="relative flex items-center gap-6 bg-white rounded-full px-6 py-2"
+          >
             {/* 🔔 Notification Icon */}
             <div className="relative">
               <FontAwesomeIcon
@@ -115,8 +132,13 @@ const Navbar = ({ toggleSidebar, title }) => {
               <div className="absolute right-0 mt-10 w-72 bg-white border border-gray-300 rounded shadow-lg z-50 max-h-60 overflow-auto">
                 {notifications.length > 0 ? (
                   notifications.slice(0, 5).map((notif, index) => (
-                    <div key={notif.id || index} className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b">
-                      <p className="text-sm font-medium">{notif.message || "Notification"}</p>
+                    <div
+                      key={notif.id || index}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b"
+                    >
+                      <p className="text-sm font-medium">
+                        {notif.message || "Notification"}
+                      </p>
                       <small className="text-gray-400">
                         {formatDate(getNotificationDate(notif))}
                       </small>
@@ -154,7 +176,18 @@ const Navbar = ({ toggleSidebar, title }) => {
       {showFullView && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.4)] flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded shadow-lg w-11/12 max-w-2xl max-h-[80vh] overflow-y-auto relative">
-            <h2 className="text-xl font-semibold mb-4">All Notifications</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">All Notifications</h2>
+              {notifications.length > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="text-red-500 text-sm underline hover:text-red-700"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+
             <button
               onClick={() => setShowFullView(false)}
               className="absolute top-2 right-4 text-gray-600 text-xl"
@@ -163,13 +196,17 @@ const Navbar = ({ toggleSidebar, title }) => {
             </button>
 
             {notifications.length === 0 ? (
-              <p className="text-center text-gray-500">No notifications found.</p>
+              <p className="text-center text-gray-500">
+                No notifications found.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {notifications.map((n, i) => (
                   <li key={i} className="p-3 bg-gray-100 rounded border">
                     <div>{n.message}</div>
-                    <div className="text-sm text-gray-500">{formatDate(getNotificationDate(n))}</div>
+                    <div className="text-sm text-gray-500">
+                      {formatDate(getNotificationDate(n))}
+                    </div>
                   </li>
                 ))}
               </ul>
