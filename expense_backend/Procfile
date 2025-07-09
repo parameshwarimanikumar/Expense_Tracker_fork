@@ -1,0 +1,1 @@
+web: daphne expense_backend.asgi:application
