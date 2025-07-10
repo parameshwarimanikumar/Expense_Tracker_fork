@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 from datetime import timedelta
+import dj_database_url
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -71,15 +74,13 @@ WSGI_APPLICATION = 'expense_backend.wsgi.application'
 
 # Database
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'expense_db',
-        'USER': 'postgres',
-        'PASSWORD': 'paramesh',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config(
+        default='postgres://postgres:paramesh@localhost:5432/expense_db',
+        conn_max_age=600,
+        ssl_require=not DEBUG
+    )
 }
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
