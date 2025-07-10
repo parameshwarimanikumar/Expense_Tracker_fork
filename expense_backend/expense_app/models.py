@@ -5,6 +5,26 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save, pre_save,post_delete
 from django.db.models import Sum,F
 import os
+from django.contrib.auth.models import BaseUserManager
+
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("The Email must be set")
+        email = self.normalize_email(email)
+        extra_fields.setdefault('username', email.split('@')[0])  # auto-fill username
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault('username', email.split('@')[0])
+        return self.create_user(email, password, **extra_fields)
+
 
 
 def get_upload_path(instance, filename):
@@ -24,15 +44,18 @@ class User(AbstractUser):
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True)
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=150, blank=True, null=True)
-    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)  # ✅ Add this line
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
     created_date = models.DateTimeField(default=timezone.now)
     updated_date = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
+    objects = UserManager()  # ✅ Must keep this
+
     def __str__(self):
         return self.email
+
 
 #Category
 
