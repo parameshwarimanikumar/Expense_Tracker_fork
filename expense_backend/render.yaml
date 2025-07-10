@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: expense-backend
+    env: python
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+    startCommand: gunicorn expense_backend.wsgi
+    envVars:
+      - key: DEBUG
+        value: false
