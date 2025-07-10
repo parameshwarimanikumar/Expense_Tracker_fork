@@ -14,7 +14,8 @@ SECRET_KEY = 'django-insecure-cw4v#x2_0b-(#851_ex+b4v(5prf@0=1u=ephm)$(^))1_qoc0
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["expense-backend-xuyr.onrender.com", "localhost", "127.0.0.1"]
+
 
 # Application definition
 INSTALLED_APPS = [
@@ -49,9 +50,12 @@ MIDDLEWARE = [
 ]
 
 # CORS Setup
-CORS_ALLOW_ALL_ORIGINS = True
+CSRF_TRUSTED_ORIGINS = ['https://expense-backend-xuyr.onrender.com']
 
 ROOT_URLCONF = 'expense_backend.urls'
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
 
 TEMPLATES = [
     {
