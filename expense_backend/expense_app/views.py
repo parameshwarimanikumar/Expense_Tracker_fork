@@ -31,6 +31,11 @@ from expense_app.utils import send_realtime_notification
 from dateutil import parser
 from .serializers import MyTokenObtainPairSerializer
 
+from django.http import HttpResponse
+
+def home_view(request):
+    return HttpResponse("🎉 Welcome to the Expense Tracker Backend API!")
+
 
 # Authentication View
 
