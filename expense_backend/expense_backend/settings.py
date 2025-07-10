@@ -75,12 +75,11 @@ WSGI_APPLICATION = 'expense_backend.wsgi.application'
 # Database
 DATABASES = {
    'default': dj_database_url.config(
-    default=os.getenv('DATABASE_URL', 'postgres://postgres:paramesh@localhost:5432/expense_db'),
-    conn_max_age=600,
-    ssl_require=not DEBUG
-)
-
+       conn_max_age=600,
+       ssl_require=True
+   )
 }
+
 
 
 # Password validation
