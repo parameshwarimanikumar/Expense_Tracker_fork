@@ -73,14 +73,17 @@ WSGI_APPLICATION = 'expense_backend.wsgi.application'
 # ASGI_APPLICATION = 'expense_backend.asgi.application'
 
 # Database
-DATABASES = {
-   'default': dj_database_url.config(
-       conn_max_age=600,
-       ssl_require=True
-   )
-}
+# Database
+DATABASES = {}
 
-
+if os.environ.get("DATABASE_URL"):
+    DATABASES["default"] = dj_database_url.config(conn_max_age=600, ssl_require=True)
+else:
+    # Local development using SQLite
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -89,6 +92,11 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
