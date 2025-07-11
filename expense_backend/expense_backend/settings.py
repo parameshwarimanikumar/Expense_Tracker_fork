@@ -3,6 +3,11 @@ from pathlib import Path
 from datetime import timedelta
 import dj_database_url
 
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'authorization',
+]
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -39,9 +44,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ✅ Serve static files in production
+    'corsheaders.middleware.CorsMiddleware',  # Move this here, just below SecurityMiddleware
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -49,12 +54,24 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
 # CORS Setup
-CSRF_TRUSTED_ORIGINS = ['https://expense-backend-xuyr.onrender.com']
+CSRF_TRUSTED_ORIGINS = ['https://expense-backend-xuyr.onrender.com',
+                        'https://expense-tracker-fork.vercel.app',]
 
 ROOT_URLCONF = 'expense_backend.urls'
 SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+# Add your local frontend origin here for development:
+CORS_ALLOWED_ORIGINS = [
+    "https://expense-tracker-fork.vercel.app",  # production frontend URL
+    "http://localhost:5173",                     # your local React dev server
+    "http://127.0.0.1:5173",                     # localhost alias
+]
+
+# If you want to allow cookies/auth headers (you have this already)
+CORS_ALLOW_CREDENTIALS = True
+
+
 
 
 TEMPLATES = [

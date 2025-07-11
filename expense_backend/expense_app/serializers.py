@@ -195,37 +195,44 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
-        email = attrs.get('email', '')
-        if not email or '@' not in email:
-            raise serializers.ValidationError({"email": "Valid email is required."})
+        email = attrs.get("email")
+        password = attrs.get("password")
+
+        if not email or not password:
+            raise serializers.ValidationError("Email and password are required.")
 
         try:
-            data = super().validate(attrs)
-        except AuthenticationFailed:
-            raise serializers.ValidationError({"detail": "Invalid email or password."})
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise AuthenticationFailed("Invalid email or password.")
 
-        refresh = self.get_token(self.user)
-        user = self.user
+        if not user.check_password(password):
+            raise AuthenticationFailed("Invalid email or password.")
+
+        if not user.is_active:
+            raise AuthenticationFailed("User account is disabled.")
+
+        refresh = self.get_token(user)
+        access = refresh.access_token
+
         request = self.context.get('request')
-
         profile_picture_url = (
             request.build_absolute_uri(user.profile_picture.url)
             if user.profile_picture and request else
             user.profile_picture.url if user.profile_picture else ''
         )
 
-        data['user'] = {
-            'id': user.id,
-            'email': user.email,
-            'username': user.username,
-            'name': user.name,
-            'profile_picture': profile_picture_url,
-            'role': {
-                'role_name': user.role.role_name if user.role else None
+        return {
+            'refresh': str(refresh),
+            'access': str(access),
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'username': user.username,
+                'name': user.name,
+                'profile_picture': profile_picture_url,
+                'role': {
+                    'role_name': user.role.role_name if user.role else None
+                }
             }
         }
-
-        data['access'] = str(refresh.access_token)
-        data['refresh'] = str(refresh)
-
-        return data
