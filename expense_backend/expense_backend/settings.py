@@ -63,10 +63,12 @@ ROOT_URLCONF = 'expense_backend.urls'
 SESSION_COOKIE_SECURE = True
 # Add your local frontend origin here for development:
 CORS_ALLOWED_ORIGINS = [
-    "https://expense-tracker-fork.vercel.app",  # production frontend URL
-    "http://localhost:5173",                     # your local React dev server
-    "http://127.0.0.1:5173",                     # localhost alias
+    "https://expense-tracker-fork.vercel.app",  # (optional alias)
+    "https://expense-tracker-fork-lphcxop6w-parameshwari-manikumars-projects.vercel.app",  # ✅ your deployed frontend
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
+
 
 # If you want to allow cookies/auth headers (you have this already)
 CORS_ALLOW_CREDENTIALS = True
