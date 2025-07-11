@@ -112,14 +112,9 @@ def user_profile(request):
 @authentication_classes([])  
 @permission_classes([AllowAny])  
 def user_login(request):
-    print("🔥 LOGIN REQUEST RECEIVED:", request.data)  # ✅ LOG the input
-
-    serializer = MyTokenObtainPairSerializer(data=request.data, context={'request': request})  # 👈 make sure to pass context
+    serializer = MyTokenObtainPairSerializer(data=request.data)
     if serializer.is_valid():
-        print("✅ LOGIN SUCCESS")  # Optional
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
-
-    print("❌ LOGIN FAILED:", serializer.errors)  # ✅ LOG the validation error
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
